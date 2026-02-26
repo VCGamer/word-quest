@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head><title>Generate Icons</title></head>
+<body>
+<canvas id="c192" width="192" height="192"></canvas>
+<canvas id="c512" width="512" height="512"></canvas>
+<script>
+function drawIcon(canvas, size) {
+  const ctx = canvas.getContext('2d');
+  // Dark background
+  ctx.fillStyle = '#1A1D23';
+  ctx.fillRect(0, 0, size, size);
+
+  // Green border glow
+  const borderWidth = size * 0.04;
+  ctx.strokeStyle = '#00B06A';
+  ctx.lineWidth = borderWidth;
+  const r = size * 0.12;
+  const m = borderWidth / 2 + 2;
+  ctx.beginPath();
+  ctx.roundRect(m, m, size - m * 2, size - m * 2, r);
+  ctx.stroke();
+
+  // Inner glow
+  ctx.shadowColor = 'rgba(0, 176, 106, 0.3)';
+  ctx.shadowBlur = size * 0.08;
+  ctx.strokeStyle = 'rgba(0, 176, 106, 0.2)';
+  ctx.lineWidth = borderWidth * 0.5;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Game controller emoji
+  const emojiSize = size * 0.35;
+  ctx.font = `${emojiSize}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🎮', size / 2, size * 0.38);
+
+  // "WQ" text
+  ctx.font = `bold ${size * 0.18}px 'Arial Black', 'Impact', sans-serif`;
+  ctx.fillStyle = '#00D47E';
+  ctx.shadowColor = 'rgba(0, 212, 126, 0.5)';
+  ctx.shadowBlur = size * 0.04;
+  ctx.fillText('WQ', size / 2, size * 0.72);
+  ctx.shadowBlur = 0;
+
+  // Small subtitle
+  ctx.font = `bold ${size * 0.06}px Arial, sans-serif`;
+  ctx.fillStyle = '#A0A8B8';
+  ctx.fillText('WORD QUEST', size / 2, size * 0.86);
+}
+
+drawIcon(document.getElementById('c192'), 192);
+drawIcon(document.getElementById('c512'), 512);
+
+// Auto-download
+['c192', 'c512'].forEach(id => {
+  const canvas = document.getElementById(id);
+  const link = document.createElement('a');
+  link.download = `icon-${canvas.width}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+});
+</script>
+</body>
+</html>
