@@ -9,6 +9,7 @@ const MONEY_THRESHOLD = 8;   // Score > 8 out of 10 → $1 Roblox Money
 const CORRECT_PER_MINUTE = 5; // 5 correct answers = 1 Roblox minute
 const SCHOOL_REVIEW_REWARD = 10; // 100% on school review = 10 Roblox minutes
 const MINI_ROBUX_PER_CORRECT = 1; // 1 Mini Robux per correct answer (100 = $1.00)
+const PARENT_PIN = '0824';
 
 const SCHOOL_REVIEW_WORDS = [
   { correct: "doesn't", wrong: "does'nt" },
@@ -1529,6 +1530,7 @@ function renderStats() {
     <div class="app-container">
       <div class="stats-header">
         <span class="stats-title">&#x1F4CA; STATS HQ</span>
+        <button class="admin-gear-btn" id="adminGearBtn">&#x2699;&#xFE0F;</button>
       </div>
 
       <div class="player-card">
@@ -1658,11 +1660,160 @@ function renderStats() {
         robloxTime: {},
         todayBonusActive: false,
         robloxMoney: 0,
+        miniRobux: 0,
       };
       saveState(state);
       render('stats');
     }
   });
+
+  document.getElementById('adminGearBtn').addEventListener('click', showPinEntry);
+}
+
+// ===== PARENT ADMIN PANEL =====
+function showPinEntry() {
+  // Remove existing overlay
+  document.querySelectorAll('.admin-overlay').forEach(el => el.remove());
+
+  const overlay = document.createElement('div');
+  overlay.className = 'admin-overlay';
+  overlay.innerHTML = `
+    <div class="admin-modal pin-modal">
+      <div class="admin-modal-title">&#x1F512; Parent Access</div>
+      <div class="pin-subtitle">Enter 4-digit PIN</div>
+      <div class="pin-boxes">
+        <input class="pin-box" type="tel" maxlength="1" data-pin="0" inputmode="numeric" autocomplete="off">
+        <input class="pin-box" type="tel" maxlength="1" data-pin="1" inputmode="numeric" autocomplete="off">
+        <input class="pin-box" type="tel" maxlength="1" data-pin="2" inputmode="numeric" autocomplete="off">
+        <input class="pin-box" type="tel" maxlength="1" data-pin="3" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="pin-error hidden" id="pinError">&#x274C; Wrong PIN</div>
+      <button class="admin-cancel-btn" id="pinCancelBtn">Cancel</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const boxes = overlay.querySelectorAll('.pin-box');
+  boxes[0].focus();
+
+  boxes.forEach((box, i) => {
+    box.addEventListener('input', () => {
+      box.value = box.value.replace(/[^0-9]/g, '').slice(-1);
+      if (box.value && i < 3) boxes[i + 1].focus();
+      // Check if all 4 filled
+      const pin = Array.from(boxes).map(b => b.value).join('');
+      if (pin.length === 4) {
+        if (pin === PARENT_PIN) {
+          overlay.remove();
+          showAdminPanel();
+        } else {
+          document.getElementById('pinError').classList.remove('hidden');
+          boxes.forEach(b => { b.value = ''; b.classList.add('shake'); });
+          boxes[0].focus();
+          setTimeout(() => boxes.forEach(b => b.classList.remove('shake')), 500);
+        }
+      }
+    });
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !box.value && i > 0) {
+        boxes[i - 1].focus();
+      }
+    });
+  });
+
+  document.getElementById('pinCancelBtn').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+}
+
+function showAdminPanel() {
+  document.querySelectorAll('.admin-overlay').forEach(el => el.remove());
+
+  const todayData = getTodayRobloxData();
+  const overlay = document.createElement('div');
+  overlay.className = 'admin-overlay';
+  overlay.innerHTML = `
+    <div class="admin-modal admin-panel">
+      <div class="admin-modal-title">&#x1F6E0;&#xFE0F; Parent Admin</div>
+
+      <div class="admin-section">
+        <div class="admin-section-title">&#x1F4C5; Today's Roblox Time</div>
+        <div class="admin-field">
+          <label>Minutes Earned</label>
+          <input type="number" id="adminTodayEarned" value="${todayData.earned}" min="0" max="60">
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="admin-section-title">&#x1F4B0; Money</div>
+        <div class="admin-field">
+          <label>Roblox Money ($)</label>
+          <input type="number" id="adminRobloxMoney" value="${getTotalRobloxMoney()}" min="0">
+        </div>
+        <div class="admin-field">
+          <label>Mini Robux</label>
+          <input type="number" id="adminMiniRobux" value="${getMiniRobux()}" min="0">
+          <span class="admin-hint">100 = $1.00</span>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="admin-section-title">&#x1F525; Streak & Progress</div>
+        <div class="admin-field">
+          <label>Day Streak</label>
+          <input type="number" id="adminStreak" value="${state.streak}" min="0">
+        </div>
+        <div class="admin-field">
+          <label>Words Mastered</label>
+          <span class="admin-val">${state.learnedWords.length} / ${vocabulary.length}</span>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="admin-section-title">&#x1F3AE; Today's Flags</div>
+        <div class="admin-toggle">
+          <label>
+            <input type="checkbox" id="adminBonusActive" ${todayData.bonus ? 'checked' : ''}>
+            1.2x Bonus Active
+          </label>
+        </div>
+        <div class="admin-toggle">
+          <label>
+            <input type="checkbox" id="adminMoneyAwarded" ${todayData.moneyAwarded ? 'checked' : ''}>
+            $1 Money Awarded Today
+          </label>
+        </div>
+        <div class="admin-toggle">
+          <label>
+            <input type="checkbox" id="adminSchoolDone" ${todayData.schoolReviewDone ? 'checked' : ''}>
+            School Review Done Today
+          </label>
+        </div>
+      </div>
+
+      <div class="admin-actions">
+        <button class="admin-save-btn" id="adminSaveBtn">&#x2705; Save Changes</button>
+        <button class="admin-cancel-btn" id="adminCancelBtn">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  document.getElementById('adminSaveBtn').addEventListener('click', () => {
+    const todayData = getTodayRobloxData();
+    todayData.earned = Math.max(0, parseInt(document.getElementById('adminTodayEarned').value) || 0);
+    todayData.bonus = document.getElementById('adminBonusActive').checked;
+    todayData.moneyAwarded = document.getElementById('adminMoneyAwarded').checked;
+    todayData.schoolReviewDone = document.getElementById('adminSchoolDone').checked;
+    state.robloxMoney = Math.max(0, parseInt(document.getElementById('adminRobloxMoney').value) || 0);
+    state.miniRobux = Math.max(0, parseInt(document.getElementById('adminMiniRobux').value) || 0);
+    state.streak = Math.max(0, parseInt(document.getElementById('adminStreak').value) || 0);
+    saveState(state);
+    overlay.remove();
+    render('stats');
+  });
+
+  document.getElementById('adminCancelBtn').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
 }
 
 // ===== INIT =====

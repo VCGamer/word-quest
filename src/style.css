@@ -2165,6 +2165,10 @@ button, a, .lto-btn, .quiz-option, .lpd, .bnav-tab, .vg-header {
 .stats-header {
   text-align: center;
   padding: 12px 0 8px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .stats-title {
@@ -2172,6 +2176,19 @@ button, a, .lto-btn, .quiz-option, .lpd, .bnav-tab, .vg-header {
   font-size: 0.7rem;
   color: var(--roblox-green-light);
   letter-spacing: 1px;
+}
+
+.admin-gear-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0.4;
+  padding: 8px;
 }
 
 /* Player Card */
@@ -2490,6 +2507,207 @@ button, a, .lto-btn, .quiz-option, .lpd, .bnav-tab, .vg-header {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== PARENT ADMIN PANEL ===== */
+.admin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.admin-modal {
+  background: #1e2229;
+  border: 2px solid var(--roblox-purple);
+  border-radius: 16px;
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 360px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+}
+
+.admin-modal-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.75rem;
+  color: var(--roblox-purple-light, #c084fc);
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+/* PIN Entry */
+.pin-subtitle {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+
+.pin-boxes {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pin-box {
+  width: 52px;
+  height: 60px;
+  background: #12141a;
+  border: 2px solid #3a3f4a;
+  border-radius: 10px;
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 1.2rem;
+  text-align: center;
+  caret-color: var(--roblox-green-light);
+}
+
+.pin-box:focus {
+  border-color: var(--roblox-purple);
+  outline: none;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
+}
+
+.pin-box.shake {
+  animation: pinShake 0.4s ease;
+  border-color: #ef4444;
+}
+
+@keyframes pinShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.pin-error {
+  text-align: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  color: #ef4444;
+  margin-bottom: 8px;
+}
+
+/* Admin Panel */
+.admin-section {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #2a2e38;
+}
+
+.admin-section:last-of-type {
+  border-bottom: none;
+}
+
+.admin-section-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  color: var(--roblox-green-light);
+  margin-bottom: 10px;
+}
+
+.admin-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.admin-field label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.admin-field input[type="number"] {
+  width: 80px;
+  padding: 6px 8px;
+  background: #12141a;
+  border: 1px solid #3a3f4a;
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  text-align: center;
+}
+
+.admin-field input[type="number"]:focus {
+  border-color: var(--roblox-purple);
+  outline: none;
+}
+
+.admin-hint {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+}
+
+.admin-val {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  color: var(--text-dim);
+}
+
+.admin-toggle {
+  margin-bottom: 8px;
+}
+
+.admin-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.admin-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--roblox-purple);
+  cursor: pointer;
+}
+
+.admin-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.admin-save-btn {
+  padding: 12px;
+  background: linear-gradient(135deg, var(--roblox-green), #059669);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  cursor: pointer;
+}
+
+.admin-cancel-btn {
+  padding: 10px;
+  background: transparent;
+  border: 1px solid #3a3f4a;
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.hidden {
+  display: none !important;
 }
 
 /* ===== RESPONSIVE ===== */
