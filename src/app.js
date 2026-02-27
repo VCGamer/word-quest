@@ -5,10 +5,11 @@ const STORAGE_KEY = 'vocab-app-state';
 const DAILY_CAP_MINUTES = 10;
 const BONUS_MULTIPLIER = 1.2;
 const BONUS_THRESHOLD = 0.9; // 90%
-const MONEY_THRESHOLD = 8;   // Score > 8 out of 10 → $1 Roblox Money
+const MONEY_THRESHOLD = 8;   // Score > 8 out of 10 → +10 Mini Robux ($1.00 Robux $)
 const CORRECT_PER_MINUTE = 5; // 5 correct answers = 1 Roblox minute
 const SCHOOL_REVIEW_REWARD = 10; // 100% on school review = 10 Roblox minutes
-const MINI_ROBUX_PER_CORRECT = 1; // 1 Mini Robux per correct answer (100 = $1.00)
+const MINI_ROBUX_PER_CORRECT = 1; // 1 Mini Robux per correct answer (1 = $0.10 Robux $)
+const MINI_ROBUX_QUIZ_BONUS = 10; // Quiz score > 8 → +10 Mini Robux ($1.00)
 const PARENT_PIN = '0824';
 
 const SCHOOL_REVIEW_WORDS = [
@@ -142,20 +143,15 @@ function awardRobloxMoney() {
   const data = getTodayRobloxData();
   if (data.moneyAwarded) return 0;
   data.moneyAwarded = true;
-  state.robloxMoney = (state.robloxMoney || 0) + 1;
-  saveState(state);
+  awardMiniRobux(MINI_ROBUX_QUIZ_BONUS); // +10 Mini Robux = $1.00 Robux $
   return 1;
-}
-
-function getTotalRobloxMoney() {
-  return state.robloxMoney || 0;
 }
 
 function isMoneyAwardedToday() {
   return getTodayRobloxData().moneyAwarded || false;
 }
 
-// ===== MINI ROBUX MONEY (PIGGY BANK) =====
+// ===== MINI ROBUX / ROBUX $ =====
 function awardMiniRobux(amount = MINI_ROBUX_PER_CORRECT) {
   state.miniRobux = (state.miniRobux || 0) + amount;
   saveState(state);
@@ -167,7 +163,7 @@ function getMiniRobux() {
 }
 
 function getMiniRobuxDollars() {
-  return (getMiniRobux() / 100).toFixed(2);
+  return (getMiniRobux() / 10).toFixed(2);
 }
 
 // ===== DATE & WEEKLY THEME =====
@@ -248,8 +244,8 @@ function showMoneyPopup() {
   popup.className = 'reward-popup money-reward';
   popup.innerHTML = `
     <div class="reward-icon">&#x1F4B0;</div>
-    <div class="reward-title money-title">+ $1 ROBLOX MONEY!</div>
-    <div class="reward-minutes money-amount">$${getTotalRobloxMoney()} total</div>
+    <div class="reward-title money-title">+10 Mini Robux!</div>
+    <div class="reward-minutes money-amount">Robux $${getMiniRobuxDollars()} total</div>
     <div class="reward-sub">Save up for a Roblox prepaid card!</div>
     <button class="reward-dismiss money-dismiss" id="dismissMoney">CHA-CHING!</button>
   `;
@@ -285,7 +281,6 @@ function robloxBarCompactHTML() {
   const pct = Math.min((earned / max) * 100, 100);
   const bonus = isBonusActive();
   const isFull = earned >= max;
-  const money = getTotalRobloxMoney();
   const correctCount = getTodayCorrectCount();
   const untilNext = CORRECT_PER_MINUTE - (correctCount % CORRECT_PER_MINUTE);
   const correctPct = ((correctCount % CORRECT_PER_MINUTE) / CORRECT_PER_MINUTE) * 100;
@@ -298,13 +293,12 @@ function robloxBarCompactHTML() {
       <div class="rbc-top">
         <span class="rbc-title">&#x1F3AE; ROBLOX TIME</span>
         <span class="rbc-tags">
-          ${money > 0 ? `<span class="robux-money-tag">&#x1F4B0; $${money}</span>` : ''}
           ${bonus ? '<span class="robux-bonus-tag">1.2x</span>' : ''}
         </span>
       </div>
       <div class="rbc-mini-robux">
         <span>&#x1F4B0; ${miniRobux} Mini Robux</span>
-        <span class="rbc-mini-dollars">($${miniDollars})</span>
+        <span class="rbc-mini-dollars">(Robux $${miniDollars})</span>
       </div>
       <div class="rbc-row">
         <span class="rbc-earned">${earned}<span class="rbc-unit">/${max} min</span></span>
@@ -1037,17 +1031,17 @@ function startQuiz() {
           ${moneyAwarded > 0 ? `
             <div class="results-money">
               <div class="results-money-icon">&#x1F4B0;</div>
-              <div class="results-money-title">+ $1 ROBLOX MONEY!</div>
-              <div class="results-money-text">Total saved: $${getTotalRobloxMoney()} for Roblox prepaid card!</div>
+              <div class="results-money-title">+10 Mini Robux!</div>
+              <div class="results-money-text">Total: Robux $${getMiniRobuxDollars()}</div>
             </div>
           ` : ''}
 
           ${alreadyGotMoneyToday ? `
-            <div class="results-info-msg purple">&#x1F4B0; Already earned $1 today! Come back tomorrow!</div>
+            <div class="results-info-msg purple">&#x1F4B0; Already earned quiz bonus today! Come back tomorrow!</div>
           ` : ''}
 
           ${!gotMoney && score <= MONEY_THRESHOLD ? `
-            <div class="results-info-msg muted">&#x1F4B0; Score 9+ out of 10 to earn $1 Roblox Money!</div>
+            <div class="results-info-msg muted">&#x1F4B0; Score 9+ out of 10 to earn +10 Mini Robux!</div>
           ` : ''}
 
           ${gotBonus ? `
@@ -1536,13 +1530,9 @@ function renderStats() {
       <div class="player-card">
         <div class="pc-label">PLAYER STATS</div>
         <div class="pc-grid">
-          <div class="pc-stat hero orange">
-            <div class="pc-val">$${getTotalRobloxMoney()}</div>
-            <div class="pc-key">&#x1F4B0; Roblox Money</div>
-          </div>
           <div class="pc-stat hero gold">
-            <div class="pc-val">${getMiniRobux()}</div>
-            <div class="pc-key">&#x1F4B0; Mini Robux ($${getMiniRobuxDollars()})</div>
+            <div class="pc-val">Robux $${getMiniRobuxDollars()}</div>
+            <div class="pc-key">&#x1F4B0; ${getMiniRobux()} Mini Robux</div>
           </div>
           <div class="pc-stat hero green">
             <div class="pc-val">${totalRoblox}</div>
@@ -1573,8 +1563,8 @@ function renderStats() {
           <div class="robux-progress-fill ${todayEarned >= todayMax ? 'maxed' : ''}" style="width: ${Math.min((todayEarned / todayMax) * 100, 100)}%"></div>
         </div>
         <div class="te-row">
-          <span class="te-label">&#x1F4B0; Money</span>
-          <span class="te-val">${isMoneyAwardedToday() ? '&#x2705; $1 earned' : '&#x274C; Not yet'}</span>
+          <span class="te-label">&#x1F4B0; Quiz Bonus</span>
+          <span class="te-val">${isMoneyAwardedToday() ? '&#x2705; +10 earned' : '&#x274C; Score 9+'}</span>
         </div>
         <div class="te-row">
           <span class="te-label">&#x1F525; 1.2x Bonus</span>
@@ -1617,7 +1607,7 @@ function renderStats() {
               <span>
                 <span class="rh-earned">${data.earned} min</span>
                 ${data.bonus ? '<span class="rh-bonus">1.2x</span>' : ''}
-                ${data.moneyAwarded ? '<span class="rh-money">+$1</span>' : ''}
+                ${data.moneyAwarded ? '<span class="rh-money">+10MR</span>' : ''}
               </span>
             </div>
           `).join('')}
@@ -1744,15 +1734,15 @@ function showAdminPanel() {
       </div>
 
       <div class="admin-section">
-        <div class="admin-section-title">&#x1F4B0; Money</div>
-        <div class="admin-field">
-          <label>Roblox Money ($)</label>
-          <input type="number" id="adminRobloxMoney" value="${getTotalRobloxMoney()}" min="0">
-        </div>
+        <div class="admin-section-title">&#x1F4B0; Robux $</div>
         <div class="admin-field">
           <label>Mini Robux</label>
           <input type="number" id="adminMiniRobux" value="${getMiniRobux()}" min="0">
-          <span class="admin-hint">100 = $1.00</span>
+          <span class="admin-hint">1 = $0.10</span>
+        </div>
+        <div class="admin-field">
+          <label>Robux $</label>
+          <span class="admin-val">$${getMiniRobuxDollars()}</span>
         </div>
       </div>
 
@@ -1779,7 +1769,7 @@ function showAdminPanel() {
         <div class="admin-toggle">
           <label>
             <input type="checkbox" id="adminMoneyAwarded" ${todayData.moneyAwarded ? 'checked' : ''}>
-            $1 Money Awarded Today
+            Quiz Bonus (+10 MR) Awarded Today
           </label>
         </div>
         <div class="admin-toggle">
@@ -1804,7 +1794,6 @@ function showAdminPanel() {
     todayData.bonus = document.getElementById('adminBonusActive').checked;
     todayData.moneyAwarded = document.getElementById('adminMoneyAwarded').checked;
     todayData.schoolReviewDone = document.getElementById('adminSchoolDone').checked;
-    state.robloxMoney = Math.max(0, parseInt(document.getElementById('adminRobloxMoney').value) || 0);
     state.miniRobux = Math.max(0, parseInt(document.getElementById('adminMiniRobux').value) || 0);
     state.streak = Math.max(0, parseInt(document.getElementById('adminStreak').value) || 0);
     saveState(state);
