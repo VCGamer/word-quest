@@ -574,7 +574,7 @@ function renderSpellingPhase(word, theme, weeklyWords, weekNum, weekLearned) {
           if (i === 0) {
             return `<div class="spell-box hint" data-idx="${i}">${ch.toUpperCase()}</div>`;
           }
-          return `<input class="spell-box" data-idx="${i}" type="text" maxlength="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="none">`;
+          return `<input class="spell-box" data-idx="${i}" type="text" maxlength="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">`;
         }).join('')}
       </div>
 
@@ -1147,7 +1147,7 @@ function startSchoolReview() {
             if (isHint[i]) {
               return `<div class="spell-box hint ${ch === "'" ? 'apostrophe' : ''}" data-idx="${i}">${ch === "'" ? "&#x2019;" : ch.toUpperCase()}</div>`;
             }
-            return `<input class="spell-box" data-idx="${i}" type="text" maxlength="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="none">`;
+            return `<input class="spell-box" data-idx="${i}" type="text" maxlength="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">`;
           }).join('')}
         </div>
 
