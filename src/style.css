@@ -218,6 +218,37 @@ button, a, .lto-btn, .quiz-option, .lpd, .bnav-tab, .vg-header {
   box-shadow: 0 0 8px rgba(245, 197, 66, 0.5);
 }
 
+.rbc-next-min {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  gap: 8px;
+}
+
+.rbc-next-min span {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rbc-mini-progress {
+  flex: 1;
+  height: 4px;
+  background: #1a1d23;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid #3a3f4a;
+}
+
+.rbc-mini-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--roblox-purple), #c084fc);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
 /* ===== BOTTOM NAV ===== */
 .bottom-nav {
   position: fixed;
@@ -711,64 +742,128 @@ button, a, .lto-btn, .quiz-option, .lpd, .bnav-tab, .vg-header {
   border: 1px dashed rgba(155, 89, 182, 0.3);
 }
 
-.spell-input-row {
+/* Letter Box Spelling UI (Wordle-style) */
+.spell-letter-boxes {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 0 4px;
 }
 
-.spell-input {
-  flex: 1;
-  padding: 14px 16px;
+.spell-box {
+  width: 36px;
+  height: 44px;
   border: 2px solid var(--roblox-purple);
-  border-radius: var(--radius-sm);
-  font-size: 1.1rem;
-  font-weight: 700;
+  border-radius: var(--radius-xs);
+  background: var(--bg-card);
+  color: var(--text);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.75rem;
+  text-align: center;
+  line-height: 40px;
   outline: none;
   transition: all 0.2s;
-  background: var(--bg-card);
-  font-family: inherit;
-  color: var(--text);
-  letter-spacing: 1px;
+  padding: 0;
+  caret-color: var(--roblox-purple);
+  text-transform: lowercase;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
-.spell-input::placeholder {
-  color: var(--text-muted);
-  font-weight: 400;
-  font-size: 0.9rem;
+.spell-box:focus {
+  border-color: #c084fc;
+  box-shadow: 0 0 12px rgba(155, 89, 182, 0.4);
+  background: #2a1a3a;
+  transform: scale(1.05);
 }
 
-.spell-input:focus {
+.spell-box.hint {
+  background: rgba(155, 89, 182, 0.15);
   border-color: var(--roblox-purple);
-  box-shadow: 0 0 12px rgba(155, 89, 182, 0.3);
+  color: var(--roblox-purple);
+  font-weight: bold;
+  cursor: default;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.spell-input.correct {
+.spell-box.correct {
   border-color: var(--roblox-green);
-  background: rgba(0, 176, 106, 0.1);
+  background: rgba(0, 176, 106, 0.15);
   color: var(--roblox-green-light);
-  box-shadow: 0 0 12px rgba(0, 176, 106, 0.3);
+  box-shadow: 0 0 8px rgba(0, 176, 106, 0.3);
 }
 
-.spell-input.wrong {
+.spell-box.wrong {
   border-color: var(--roblox-red);
-  background: rgba(226, 35, 26, 0.1);
+  background: rgba(226, 35, 26, 0.15);
   color: var(--roblox-red);
   animation: shake 0.4s ease;
 }
 
+.spell-box.all-correct {
+  border-color: var(--roblox-green);
+  background: rgba(0, 176, 106, 0.2);
+  color: var(--roblox-green-light);
+  box-shadow: 0 0 8px rgba(0, 176, 106, 0.3);
+}
+
+.spell-box:disabled {
+  opacity: 0.9;
+}
+
+/* For longer words, make boxes slightly smaller */
+.spell-letter-boxes:has(.spell-box:nth-child(9)) .spell-box {
+  width: 32px;
+  height: 40px;
+  line-height: 36px;
+  font-size: 0.65rem;
+}
+
+.spell-letter-boxes:has(.spell-box:nth-child(11)) .spell-box {
+  width: 28px;
+  height: 36px;
+  line-height: 32px;
+  font-size: 0.6rem;
+  gap: 4px;
+}
+
+.spell-progress-hint {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  background: rgba(155, 89, 182, 0.08);
+  border-radius: var(--radius-xs);
+  border: 1px dashed rgba(155, 89, 182, 0.2);
+}
+
+.lt-progress-hint {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+
 .spell-check-btn {
+  display: block;
+  width: 100%;
   padding: 14px 20px;
   background: linear-gradient(135deg, var(--roblox-purple), #7b48a0);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
   transition: all 0.2s;
   white-space: nowrap;
+  margin-bottom: 12px;
 }
 
 .spell-check-btn:hover {
@@ -947,6 +1042,333 @@ button, a, .lto-btn, .quiz-option, .lpd, .bnav-tab, .vg-header {
 .qg-review-btn:hover {
   border-color: var(--roblox-blue);
   color: var(--text);
+}
+
+/* ===== SCHOOL REVIEW QUIZ ===== */
+.school-header {
+  text-align: center;
+  padding: 20px 0 16px;
+}
+
+.school-icon {
+  font-size: 2.5rem;
+  margin-bottom: 4px;
+}
+
+.school-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.85rem;
+  color: var(--roblox-blue);
+  margin-bottom: 6px;
+}
+
+.school-sub {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.school-words-preview {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid rgba(0, 162, 255, 0.2);
+}
+
+.swp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.8rem;
+}
+
+.swp-item:last-child {
+  border-bottom: none;
+}
+
+.swp-num {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  min-width: 18px;
+}
+
+.swp-wrong {
+  color: var(--roblox-red);
+  text-decoration: line-through;
+  opacity: 0.7;
+  flex: 1;
+}
+
+.swp-arrow {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.swp-correct {
+  color: var(--roblox-green-light);
+  font-weight: 700;
+  flex: 1;
+}
+
+.school-reward-info {
+  background: linear-gradient(135deg, #1a2530, #1e2a1e);
+  border: 1px solid rgba(0, 176, 106, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.sri-text {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.sri-done {
+  font-size: 0.75rem;
+  color: var(--roblox-green-light);
+  margin-top: 6px;
+}
+
+.school-start-btn {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--roblox-blue), #0077cc);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.school-start-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 162, 255, 0.3);
+}
+
+.school-quiz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.sqh-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  color: var(--roblox-blue);
+}
+
+.sqh-counter {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.55rem;
+  color: var(--text-dim);
+}
+
+.school-progress-bar {
+  height: 6px;
+  background: #1a1d23;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  border: 1px solid #3a3f4a;
+}
+
+.school-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--roblox-blue), #00d4ff);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.school-score-row {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  font-size: 0.8rem;
+  margin-bottom: 14px;
+}
+
+.ssr-correct {
+  color: var(--roblox-green-light);
+}
+
+.ssr-wrong {
+  color: var(--roblox-red);
+}
+
+.school-speak-card {
+  background: linear-gradient(135deg, #1a2535, #15203a);
+  border: 2px solid var(--roblox-blue);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 16px;
+  box-shadow: 0 0 15px rgba(0, 162, 255, 0.15);
+}
+
+.ssc-prompt {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+.ssc-play-btn {
+  display: inline-block;
+  padding: 12px 28px;
+  background: linear-gradient(135deg, var(--roblox-blue), #0077cc);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 12px;
+}
+
+.ssc-play-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(0, 162, 255, 0.3);
+}
+
+.ssc-play-btn:active {
+  transform: scale(0.98);
+}
+
+.ssc-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ssc-wrong {
+  color: var(--roblox-red);
+  text-decoration: line-through;
+  font-weight: 600;
+}
+
+/* Apostrophe hint box */
+.spell-box.apostrophe {
+  font-size: 1.2rem;
+  width: 24px;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* School badge in nav */
+.school-badge {
+  background: var(--roblox-blue) !important;
+}
+
+/* School results */
+.school-results {
+  text-align: center;
+  padding: 40px 16px;
+}
+
+.sr-emoji {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.sr-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.8rem;
+  color: var(--roblox-blue);
+  margin-bottom: 16px;
+}
+
+.sr-score {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 1.5rem;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.sr-pct {
+  font-size: 1rem;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+.sr-reward {
+  background: linear-gradient(135deg, #1a2e1a, #1e3a1e);
+  border: 2px solid var(--roblox-green);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+  animation: cardSlideIn 0.3s ease;
+}
+
+.sr-reward-icon {
+  font-size: 2rem;
+  margin-bottom: 4px;
+}
+
+.sr-reward-text {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.65rem;
+  color: var(--roblox-green-light);
+}
+
+.sr-already {
+  font-size: 0.8rem;
+  color: var(--roblox-green-light);
+  margin-bottom: 16px;
+}
+
+.sr-hint {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+  padding: 10px;
+  background: rgba(0, 162, 255, 0.08);
+  border-radius: var(--radius-sm);
+  border: 1px dashed rgba(0, 162, 255, 0.3);
+}
+
+.sr-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.sr-btn {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sr-btn.retry {
+  background: linear-gradient(135deg, var(--roblox-blue), #0077cc);
+  color: white;
+}
+
+.sr-btn.review {
+  background: var(--bg-surface);
+  color: var(--text);
+  border: 1px solid var(--roblox-blue);
+}
+
+.sr-btn:hover {
+  transform: translateY(-1px);
 }
 
 /* ===== QUIZ SOFT GATE ===== */

@@ -6,6 +6,24 @@ const DAILY_CAP_MINUTES = 10;
 const BONUS_MULTIPLIER = 1.2;
 const BONUS_THRESHOLD = 0.9; // 90%
 const MONEY_THRESHOLD = 8;   // Score > 8 out of 10 → $1 Roblox Money
+const CORRECT_PER_MINUTE = 5; // 5 correct answers = 1 Roblox minute
+const SCHOOL_REVIEW_REWARD = 10; // 100% on school review = 10 Roblox minutes
+
+const SCHOOL_REVIEW_WORDS = [
+  { correct: "doesn't", wrong: "does'nt" },
+  { correct: "didn't", wrong: "did'nt" },
+  { correct: "beginning", wrong: "bigenning" },
+  { correct: "until", wrong: "untill" },
+  { correct: "tomorrow", wrong: "tommorow" },
+  { correct: "happened", wrong: "happend" },
+  { correct: "wouldn't", wrong: "wouldnt" },
+  { correct: "shouldn't", wrong: "shouldnt" },
+  { correct: "meant", wrong: "ment" },
+  { correct: "different", wrong: "deffrent" },
+  { correct: "believe", wrong: "belive" },
+  { correct: "usually", wrong: "usuefly" },
+  { correct: "beautiful", wrong: "buetifull" },
+];
 
 function getDefaults() {
   return {
@@ -48,7 +66,15 @@ function getTodayStr() {
 function getTodayRobloxData() {
   const today = getTodayStr();
   if (!state.robloxTime[today]) {
-    state.robloxTime[today] = { earned: 0, bonus: false, moneyAwarded: false };
+    state.robloxTime[today] = { earned: 0, bonus: false, moneyAwarded: false, correctCount: 0 };
+  }
+  // Migration: add correctCount if missing
+  if (state.robloxTime[today].correctCount === undefined) {
+    state.robloxTime[today].correctCount = 0;
+  }
+  // Migration: add schoolReviewDone if missing
+  if (state.robloxTime[today].schoolReviewDone === undefined) {
+    state.robloxTime[today].schoolReviewDone = false;
   }
   return state.robloxTime[today];
 }
@@ -82,6 +108,26 @@ function awardRobloxMinute() {
   data.earned += 1;
   saveState(state);
   return 1;
+}
+
+// Track a correct answer; awards 1 minute every CORRECT_PER_MINUTE correct answers
+// Returns { correctCount, awarded, capReached }
+function trackCorrectAndAward() {
+  const data = getTodayRobloxData();
+  data.correctCount += 1;
+  const currentCount = data.correctCount;
+  let awarded = 0;
+  if (currentCount % CORRECT_PER_MINUTE === 0) {
+    awarded = awardRobloxMinute();
+  } else {
+    saveState(state);
+  }
+  const capReached = getTodayEarned() >= getTodayMaxMinutes();
+  return { correctCount: currentCount, awarded, capReached, untilNext: CORRECT_PER_MINUTE - (currentCount % CORRECT_PER_MINUTE) };
+}
+
+function getTodayCorrectCount() {
+  return getTodayRobloxData().correctCount;
 }
 
 function getTotalRobloxMinutes() {
@@ -205,6 +251,7 @@ function render(view = 'learn') {
   switch (view) {
     case 'learn': renderLearn(); break;
     case 'quiz': renderQuiz(); break;
+    case 'school': renderSchool(); break;
     case 'vault': renderVault(); break;
     case 'stats': renderStats(); break;
     default: renderLearn();
@@ -220,6 +267,9 @@ function robloxBarCompactHTML() {
   const bonus = isBonusActive();
   const isFull = earned >= max;
   const money = getTotalRobloxMoney();
+  const correctCount = getTodayCorrectCount();
+  const untilNext = CORRECT_PER_MINUTE - (correctCount % CORRECT_PER_MINUTE);
+  const correctPct = ((correctCount % CORRECT_PER_MINUTE) / CORRECT_PER_MINUTE) * 100;
 
   return `
     <div class="robux-bar-compact">
@@ -236,6 +286,12 @@ function robloxBarCompactHTML() {
       </div>
       <div class="robux-progress-bg">
         <div class="robux-progress-fill ${isFull ? 'maxed' : ''}" style="width: ${pct}%"></div>
+      </div>
+      <div class="rbc-next-min">
+        <span>&#x2B50; ${untilNext} more correct for +1 min</span>
+        <div class="rbc-mini-progress">
+          <div class="rbc-mini-fill" style="width: ${correctPct}%"></div>
+        </div>
       </div>
     </div>
   `;
@@ -261,6 +317,11 @@ function renderBottomNav(activeView) {
       <span class="bnav-icon">&#x2694;&#xFE0F;</span>
       <span class="bnav-label">QUIZ</span>
       ${allLearned ? '<span class="bnav-badge pulse">GO!</span>' : ''}
+    </button>
+    <button class="bnav-tab ${activeView === 'school' ? 'active' : ''}" data-view="school">
+      <span class="bnav-icon">&#x1F3EB;</span>
+      <span class="bnav-label">SCHOOL</span>
+      ${!getTodayRobloxData().schoolReviewDone ? '<span class="bnav-badge pulse school-badge">NEW</span>' : ''}
     </button>
     <button class="bnav-tab ${activeView === 'vault' ? 'active' : ''}" data-view="vault">
       <span class="bnav-icon">&#x1F512;</span>
@@ -475,12 +536,13 @@ function renderTestPhase(word, theme, weeklyWords, weekNum, weekLearned) {
   });
 }
 
-// Phase 3: Spelling test — type the word from its definition
+// Phase 3: Spelling test — letter-by-letter input (prevents iPad autocomplete)
 function renderSpellingPhase(word, theme, weeklyWords, weekNum, weekLearned) {
   let answered = false;
-
-  // Build hint: first letter + underscores (e.g. "g _ _ _ _ _ _ _ _")
-  const hintLetters = word.word.split('').map((ch, i) => i === 0 ? ch : '_').join(' ');
+  const letters = word.word.split('');
+  const wordLen = letters.length;
+  const correctCount = getTodayCorrectCount();
+  const untilNext = CORRECT_PER_MINUTE - (correctCount % CORRECT_PER_MINUTE);
 
   app.innerHTML = `
     <div class="app-container">
@@ -502,62 +564,132 @@ function renderSpellingPhase(word, theme, weeklyWords, weekNum, weekLearned) {
       <div class="learn-phase-tag spell">&#x270F;&#xFE0F; SPELL</div>
 
       <div class="learn-spell-card">
-        <div class="lsc-prompt">Type the word that means:</div>
+        <div class="lsc-prompt">Spell the word that means:</div>
         <div class="lsc-def">${word.definition}</div>
         <div class="lsc-pos">${word.partOfSpeech}</div>
-        <div class="lsc-hint">${hintLetters}</div>
       </div>
 
-      <div class="spell-input-row">
-        <input type="text" id="spellInput" class="spell-input" placeholder="Type the word..." autocomplete="off" autocapitalize="none" spellcheck="false">
-        <button class="spell-check-btn" id="spellCheckBtn">CHECK &#x2705;</button>
+      <div class="spell-letter-boxes" id="letterBoxes">
+        ${letters.map((ch, i) => {
+          if (i === 0) {
+            return `<div class="spell-box hint" data-idx="${i}">${ch.toUpperCase()}</div>`;
+          }
+          return `<input class="spell-box" data-idx="${i}" type="text" maxlength="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="none">`;
+        }).join('')}
       </div>
+
+      <div class="spell-progress-hint">
+        &#x1F3AE; ${untilNext} more correct to earn +1 min
+      </div>
+
+      <button class="spell-check-btn" id="spellCheckBtn">CHECK &#x2705;</button>
 
       <div class="learn-test-feedback hidden" id="spellFeedback"></div>
       <button class="learn-test-next hidden" id="spellNext"></button>
     </div>
   `;
 
-  const input = document.getElementById('spellInput');
+  const boxes = app.querySelectorAll('.spell-box:not(.hint)');
   const checkBtn = document.getElementById('spellCheckBtn');
   const feedbackEl = document.getElementById('spellFeedback');
   const nextBtn = document.getElementById('spellNext');
 
-  // Focus input
-  setTimeout(() => input.focus(), 100);
+  // Focus first editable box
+  if (boxes.length > 0) setTimeout(() => boxes[0].focus(), 100);
+
+  // Letter box input handling
+  boxes.forEach((box, i) => {
+    box.addEventListener('input', (e) => {
+      const val = e.target.value;
+      if (val.length >= 1) {
+        e.target.value = val.charAt(val.length - 1).toLowerCase();
+        // Auto-advance to next box
+        if (i < boxes.length - 1) {
+          boxes[i + 1].focus();
+        }
+      }
+    });
+
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace') {
+        if (box.value === '' && i > 0) {
+          e.preventDefault();
+          boxes[i - 1].focus();
+          boxes[i - 1].value = '';
+        }
+      } else if (e.key === 'Enter') {
+        checkSpelling();
+      } else if (e.key === 'ArrowLeft' && i > 0) {
+        boxes[i - 1].focus();
+      } else if (e.key === 'ArrowRight' && i < boxes.length - 1) {
+        boxes[i + 1].focus();
+      }
+    });
+
+    // Handle paste — spread across boxes
+    box.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pasted = (e.clipboardData.getData('text') || '').toLowerCase();
+      for (let j = 0; j < pasted.length && (i + j) < boxes.length; j++) {
+        boxes[i + j].value = pasted[j];
+      }
+      const nextIdx = Math.min(i + pasted.length, boxes.length - 1);
+      boxes[nextIdx].focus();
+    });
+  });
 
   function checkSpelling() {
     if (answered) return;
-    const userAnswer = input.value.trim().toLowerCase();
-    if (!userAnswer) return; // don't check empty
+
+    // Gather all letters
+    const userLetters = [letters[0].toLowerCase()]; // first letter is the hint
+    boxes.forEach(box => userLetters.push((box.value || '').toLowerCase()));
+    const userAnswer = userLetters.join('');
+    const correctAnswer = word.word.toLowerCase();
+
+    // Don't check if not all filled
+    const allFilled = Array.from(boxes).every(box => box.value.trim() !== '');
+    if (userAnswer.length < wordLen || !allFilled) return;
 
     answered = true;
-    const correctAnswer = word.word.toLowerCase();
     const isCorrect = userAnswer === correctAnswer;
 
-    input.disabled = true;
+    // Disable all boxes
+    boxes.forEach(box => box.disabled = true);
     checkBtn.disabled = true;
 
-    if (isCorrect) {
-      input.classList.add('correct');
+    // Color each box green/red
+    letters.forEach((ch, i) => {
+      if (i === 0) return; // skip hint
+      const box = app.querySelector(`.spell-box[data-idx="${i}"]`);
+      if (box.value.toLowerCase() === ch.toLowerCase()) {
+        box.classList.add('correct');
+      } else {
+        box.classList.add('wrong');
+      }
+    });
 
-      // Mark as learned & award time
+    if (isCorrect) {
+      // Also highlight the hint box green
+      app.querySelector('.spell-box.hint').classList.add('all-correct');
+
+      // Mark as learned & track correct answer
       if (!state.learnedWords.includes(word.word)) {
         state.learnedWords.push(word.word);
-        const awarded = awardRobloxMinute();
         saveState(state);
+      }
+      const result = trackCorrectAndAward();
 
-        feedbackEl.innerHTML = `
-          <div class="lt-correct">&#x2705; Perfect! <strong>${word.word}</strong> mastered!</div>
-          ${awarded > 0 ? '<div class="lt-reward">&#x1F3AE; +1 ROBLOX MIN!</div>' : ''}
-        `;
-
-        if (awarded > 0) {
-          const capReached = getTodayEarned() >= getTodayMaxMinutes();
-          showRewardPopup(awarded, capReached);
-        }
+      let feedbackHTML = `<div class="lt-correct">&#x2705; Perfect! <strong>${word.word}</strong> mastered!</div>`;
+      if (result.awarded > 0) {
+        feedbackHTML += `<div class="lt-reward">&#x1F3AE; +1 ROBLOX MIN!</div>`;
       } else {
-        feedbackEl.innerHTML = `<div class="lt-correct">&#x2705; Perfect spelling!</div>`;
+        feedbackHTML += `<div class="lt-progress-hint">&#x1F3AF; ${result.untilNext} more to earn +1 min</div>`;
+      }
+      feedbackEl.innerHTML = feedbackHTML;
+
+      if (result.awarded > 0) {
+        showRewardPopup(result.awarded, result.capReached);
       }
 
       nextBtn.textContent = 'Next Word \u25B6';
@@ -567,8 +699,6 @@ function renderSpellingPhase(word, theme, weeklyWords, weekNum, weekLearned) {
         render('learn');
       });
     } else {
-      input.classList.add('wrong');
-
       feedbackEl.innerHTML = `
         <div class="lt-wrong">&#x274C; Not quite! The correct spelling is:</div>
         <div class="lt-answer spell-answer">${word.word}</div>
@@ -577,7 +707,6 @@ function renderSpellingPhase(word, theme, weeklyWords, weekNum, weekLearned) {
       nextBtn.textContent = '\uD83D\uDD04 Study Again';
       nextBtn.className = 'learn-test-next retry';
       nextBtn.addEventListener('click', () => {
-        // Go back to study phase for the same word
         renderStudyPhase(word, theme, weeklyWords, weekNum, weekLearned);
         renderBottomNav('learn');
       });
@@ -588,9 +717,6 @@ function renderSpellingPhase(word, theme, weeklyWords, weekNum, weekLearned) {
   }
 
   checkBtn.addEventListener('click', checkSpelling);
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') checkSpelling();
-  });
 
   // Dot navigation
   app.querySelectorAll('.lpd').forEach(dot => {
@@ -813,11 +939,13 @@ function startQuiz() {
           let feedbackHTML = `<div class="feedback-correct">&#x2705; Correct! Nice one!</div>`;
           if (!state.learnedWords.includes(q.word)) {
             state.learnedWords.push(q.word);
-            const awarded = awardRobloxMinute();
-            if (awarded > 0) {
-              feedbackHTML += `<div style="text-align:center;margin-top:6px;font-family:'Press Start 2P',monospace;font-size:0.5rem;color:var(--roblox-green-light);">&#x1F3AE; +1 ROBLOX MIN!</div>`;
-            }
             saveState(state);
+          }
+          const result = trackCorrectAndAward();
+          if (result.awarded > 0) {
+            feedbackHTML += `<div style="text-align:center;margin-top:6px;font-family:'Press Start 2P',monospace;font-size:0.5rem;color:var(--roblox-green-light);">&#x1F3AE; +1 ROBLOX MIN!</div>`;
+          } else {
+            feedbackHTML += `<div style="text-align:center;margin-top:4px;font-size:0.7rem;color:var(--text-dim);">&#x2B50; ${result.untilNext} more for +1 min</div>`;
           }
           document.getElementById('feedback').innerHTML = feedbackHTML;
         } else {
@@ -920,6 +1048,296 @@ function startQuiz() {
     document.getElementById('vaultBtn').addEventListener('click', () => render('vault'));
     document.getElementById('statsBtn').addEventListener('click', () => render('stats'));
   }
+}
+
+// ===== SCHOOL REVIEW QUIZ =====
+function renderSchool() {
+  const todayData = getTodayRobloxData();
+  const alreadyDone = todayData.schoolReviewDone || false;
+
+  app.innerHTML = `
+    <div class="app-container">
+      ${robloxBarCompactHTML()}
+
+      <div class="school-header">
+        <div class="school-icon">&#x1F3EB;</div>
+        <div class="school-title">SCHOOL REVIEW</div>
+        <div class="school-sub">Practise the ${SCHOOL_REVIEW_WORDS.length} words you got wrong!</div>
+      </div>
+
+      <div class="school-words-preview">
+        ${SCHOOL_REVIEW_WORDS.map((w, i) => `
+          <div class="swp-item">
+            <span class="swp-num">${i + 1}</span>
+            <span class="swp-wrong">${w.wrong}</span>
+            <span class="swp-arrow">&#x2192;</span>
+            <span class="swp-correct">${w.correct}</span>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="school-reward-info">
+        <div class="sri-text">&#x1F3AE; 100% correct = <strong>+${SCHOOL_REVIEW_REWARD} ROBLOX MIN!</strong></div>
+        ${alreadyDone ? '<div class="sri-done">&#x2705; Completed today! You can still practise.</div>' : ''}
+      </div>
+
+      <button class="school-start-btn" id="startSchoolBtn">
+        ${alreadyDone ? '&#x1F504; PRACTICE AGAIN' : '&#x1F4DD; START QUIZ'}
+      </button>
+    </div>
+  `;
+
+  document.getElementById('startSchoolBtn').addEventListener('click', () => startSchoolReview());
+}
+
+function startSchoolReview() {
+  const words = [...SCHOOL_REVIEW_WORDS].sort(() => Math.random() - 0.5);
+  let currentIdx = 0;
+  let correctCount = 0;
+
+  function speakWord(text) {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text.replace(/'/g, ''));
+      u.rate = 0.75;
+      u.lang = 'en-US';
+      window.speechSynthesis.speak(u);
+    }
+  }
+
+  function renderSchoolWord() {
+    if (currentIdx >= words.length) {
+      renderSchoolResults(correctCount, words.length);
+      return;
+    }
+
+    const entry = words[currentIdx];
+    const word = entry.correct;
+    const letters = word.split('');
+    const wordLen = letters.length;
+    let answered = false;
+
+    // Hints: first letter + apostrophes
+    const isHint = letters.map((ch, i) => i === 0 || ch === "'");
+
+    app.innerHTML = `
+      <div class="app-container">
+        <div class="school-quiz-header">
+          <span class="sqh-title">&#x1F3EB; SCHOOL REVIEW</span>
+          <span class="sqh-counter">${currentIdx + 1} / ${words.length}</span>
+        </div>
+
+        <div class="school-progress-bar">
+          <div class="school-progress-fill" style="width: ${(currentIdx / words.length) * 100}%"></div>
+        </div>
+
+        <div class="school-score-row">
+          <span class="ssr-correct">&#x2705; ${correctCount}</span>
+          <span class="ssr-wrong">&#x274C; ${currentIdx - correctCount}</span>
+        </div>
+
+        <div class="school-speak-card">
+          <div class="ssc-prompt">Listen and spell the word:</div>
+          <button class="ssc-play-btn" id="playWordBtn">&#x1F50A; PLAY WORD</button>
+          <div class="ssc-hint">You wrote: <span class="ssc-wrong">${entry.wrong}</span></div>
+        </div>
+
+        <div class="spell-letter-boxes" id="letterBoxes">
+          ${letters.map((ch, i) => {
+            if (isHint[i]) {
+              return `<div class="spell-box hint ${ch === "'" ? 'apostrophe' : ''}" data-idx="${i}">${ch === "'" ? "&#x2019;" : ch.toUpperCase()}</div>`;
+            }
+            return `<input class="spell-box" data-idx="${i}" type="text" maxlength="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="none">`;
+          }).join('')}
+        </div>
+
+        <button class="spell-check-btn" id="spellCheckBtn">CHECK &#x2705;</button>
+
+        <div class="learn-test-feedback hidden" id="spellFeedback"></div>
+        <button class="learn-test-next hidden" id="spellNext"></button>
+      </div>
+    `;
+
+    renderBottomNav('school');
+
+    // Auto-play word
+    setTimeout(() => speakWord(word), 300);
+
+    document.getElementById('playWordBtn').addEventListener('click', () => speakWord(word));
+
+    const boxes = app.querySelectorAll('.spell-box:not(.hint)');
+    const checkBtn = document.getElementById('spellCheckBtn');
+    const feedbackEl = document.getElementById('spellFeedback');
+    const nextBtn = document.getElementById('spellNext');
+
+    if (boxes.length > 0) setTimeout(() => boxes[0].focus(), 400);
+
+    // Letter box input handling
+    boxes.forEach((box, idx) => {
+      box.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (val.length >= 1) {
+          e.target.value = val.charAt(val.length - 1).toLowerCase();
+          if (idx < boxes.length - 1) boxes[idx + 1].focus();
+        }
+      });
+
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace') {
+          if (box.value === '' && idx > 0) {
+            e.preventDefault();
+            boxes[idx - 1].focus();
+            boxes[idx - 1].value = '';
+          }
+        } else if (e.key === 'Enter') {
+          doCheck();
+        } else if (e.key === 'ArrowLeft' && idx > 0) {
+          boxes[idx - 1].focus();
+        } else if (e.key === 'ArrowRight' && idx < boxes.length - 1) {
+          boxes[idx + 1].focus();
+        }
+      });
+
+      box.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasted = (e.clipboardData.getData('text') || '').toLowerCase();
+        for (let j = 0; j < pasted.length && (idx + j) < boxes.length; j++) {
+          boxes[idx + j].value = pasted[j];
+        }
+        const ni = Math.min(idx + pasted.length, boxes.length - 1);
+        boxes[ni].focus();
+      });
+    });
+
+    function doCheck() {
+      if (answered) return;
+
+      const userLetters = [];
+      let allFilled = true;
+      letters.forEach((ch, i) => {
+        if (isHint[i]) {
+          userLetters.push(ch.toLowerCase());
+        } else {
+          const box = app.querySelector(`.spell-box[data-idx="${i}"]`);
+          const val = (box.value || '').toLowerCase();
+          if (val.trim() === '') allFilled = false;
+          userLetters.push(val);
+        }
+      });
+
+      if (!allFilled) return;
+
+      answered = true;
+      const userAnswer = userLetters.join('');
+      const correctAnswer = word.toLowerCase();
+      const isCorrect = userAnswer === correctAnswer;
+
+      boxes.forEach(box => box.disabled = true);
+      checkBtn.disabled = true;
+
+      // Color each box
+      letters.forEach((ch, i) => {
+        if (isHint[i]) return;
+        const box = app.querySelector(`.spell-box[data-idx="${i}"]`);
+        if (box.value.toLowerCase() === ch.toLowerCase()) {
+          box.classList.add('correct');
+        } else {
+          box.classList.add('wrong');
+        }
+      });
+
+      if (isCorrect) {
+        correctCount++;
+        app.querySelectorAll('.spell-box.hint').forEach(h => h.classList.add('all-correct'));
+        feedbackEl.innerHTML = `<div class="lt-correct">&#x2705; Perfect!</div>`;
+        nextBtn.textContent = currentIdx < words.length - 1 ? 'Next Word \u25B6' : 'See Results \uD83C\uDFC6';
+        nextBtn.className = 'learn-test-next success';
+      } else {
+        feedbackEl.innerHTML = `
+          <div class="lt-wrong">&#x274C; Correct spelling:</div>
+          <div class="lt-answer spell-answer">${word}</div>
+        `;
+        nextBtn.textContent = currentIdx < words.length - 1 ? 'Next Word \u25B6' : 'See Results \uD83C\uDFC6';
+        nextBtn.className = 'learn-test-next retry';
+      }
+
+      feedbackEl.classList.remove('hidden');
+      nextBtn.classList.remove('hidden');
+
+      nextBtn.addEventListener('click', () => {
+        currentIdx++;
+        renderSchoolWord();
+      });
+    }
+
+    checkBtn.addEventListener('click', doCheck);
+  }
+
+  renderSchoolWord();
+}
+
+function renderSchoolResults(score, total) {
+  const pct = Math.round((score / total) * 100);
+  const isPerfect = score === total;
+  const todayData = getTodayRobloxData();
+  const alreadyDone = todayData.schoolReviewDone || false;
+
+  let minutesAwarded = 0;
+  if (isPerfect && !alreadyDone) {
+    todayData.schoolReviewDone = true;
+    const max = getTodayMaxMinutes();
+    const canAward = Math.min(SCHOOL_REVIEW_REWARD, max - todayData.earned);
+    if (canAward > 0) {
+      todayData.earned += canAward;
+      minutesAwarded = canAward;
+    }
+    saveState(state);
+  }
+
+  let emoji, message;
+  if (isPerfect) { emoji = '&#x1F3C6;'; message = 'PERFECT SCORE!'; }
+  else if (pct >= 80) { emoji = '&#x2B50;'; message = 'Almost there! Keep trying!'; }
+  else { emoji = '&#x1F4AA;'; message = 'Keep practising!'; }
+
+  app.innerHTML = `
+    <div class="app-container">
+      <div class="school-results">
+        <div class="sr-emoji">${emoji}</div>
+        <div class="sr-title">${message}</div>
+        <div class="sr-score">${score} / ${total}</div>
+        <div class="sr-pct">${pct}%</div>
+
+        ${minutesAwarded > 0 ? `
+          <div class="sr-reward">
+            <div class="sr-reward-icon">&#x1F3AE;</div>
+            <div class="sr-reward-text">+${minutesAwarded} ROBLOX MINUTES!</div>
+          </div>
+        ` : ''}
+
+        ${isPerfect && alreadyDone && minutesAwarded === 0 ? `
+          <div class="sr-already">&#x2705; Great practice! Already earned today's reward.</div>
+        ` : ''}
+
+        ${!isPerfect ? `
+          <div class="sr-hint">Get 100% to earn ${SCHOOL_REVIEW_REWARD} Roblox minutes!</div>
+        ` : ''}
+
+        <div class="sr-actions">
+          <button class="sr-btn retry" id="retrySchoolBtn">&#x1F504; Try Again</button>
+          <button class="sr-btn review" id="reviewSchoolBtn">&#x1F3EB; Review Words</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  renderBottomNav('school');
+
+  if (minutesAwarded > 0) {
+    showRewardPopup(minutesAwarded, getTodayEarned() >= getTodayMaxMinutes());
+  }
+
+  document.getElementById('retrySchoolBtn').addEventListener('click', () => startSchoolReview());
+  document.getElementById('reviewSchoolBtn').addEventListener('click', () => renderSchool());
 }
 
 // ===== WORD VAULT =====
