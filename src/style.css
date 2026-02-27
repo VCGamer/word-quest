@@ -249,6 +249,46 @@ button, a, .lto-btn, .quiz-option, .lpd, .bnav-tab, .vg-header {
   transition: width 0.3s ease;
 }
 
+/* Mini Robux in Roblox bar */
+.rbc-mini-robux {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  color: #fbbf24;
+}
+.rbc-mini-dollars {
+  color: var(--roblox-green-light);
+  font-weight: bold;
+}
+
+/* Mini Robux feedback on correct answers */
+.mini-robux-feedback {
+  text-align: center;
+  margin-top: 6px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  color: #fbbf24;
+  animation: miniRobuxPop 0.4s ease-out;
+}
+
+@keyframes miniRobuxPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Stats page gold hero stat */
+.pc-stat.hero.gold {
+  border-color: #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+}
+.pc-stat.hero.gold .pc-val {
+  color: #fbbf24;
+}
+
 /* ===== BOTTOM NAV ===== */
 .bottom-nav {
   position: fixed;

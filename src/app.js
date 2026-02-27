@@ -8,6 +8,7 @@ const BONUS_THRESHOLD = 0.9; // 90%
 const MONEY_THRESHOLD = 8;   // Score > 8 out of 10 → $1 Roblox Money
 const CORRECT_PER_MINUTE = 5; // 5 correct answers = 1 Roblox minute
 const SCHOOL_REVIEW_REWARD = 10; // 100% on school review = 10 Roblox minutes
+const MINI_ROBUX_PER_CORRECT = 1; // 1 Mini Robux per correct answer (100 = $1.00)
 
 const SCHOOL_REVIEW_WORDS = [
   { correct: "doesn't", wrong: "does'nt" },
@@ -37,6 +38,7 @@ function getDefaults() {
     robloxTime: {},
     todayBonusActive: false,
     robloxMoney: 0,
+    miniRobux: 0,
   };
 }
 
@@ -122,8 +124,9 @@ function trackCorrectAndAward() {
   } else {
     saveState(state);
   }
+  const miniTotal = awardMiniRobux();
   const capReached = getTodayEarned() >= getTodayMaxMinutes();
-  return { correctCount: currentCount, awarded, capReached, untilNext: CORRECT_PER_MINUTE - (currentCount % CORRECT_PER_MINUTE) };
+  return { correctCount: currentCount, awarded, capReached, untilNext: CORRECT_PER_MINUTE - (currentCount % CORRECT_PER_MINUTE), miniRobux: miniTotal };
 }
 
 function getTodayCorrectCount() {
@@ -149,6 +152,21 @@ function getTotalRobloxMoney() {
 
 function isMoneyAwardedToday() {
   return getTodayRobloxData().moneyAwarded || false;
+}
+
+// ===== MINI ROBUX MONEY (PIGGY BANK) =====
+function awardMiniRobux(amount = MINI_ROBUX_PER_CORRECT) {
+  state.miniRobux = (state.miniRobux || 0) + amount;
+  saveState(state);
+  return state.miniRobux;
+}
+
+function getMiniRobux() {
+  return state.miniRobux || 0;
+}
+
+function getMiniRobuxDollars() {
+  return (getMiniRobux() / 100).toFixed(2);
 }
 
 // ===== DATE & WEEKLY THEME =====
@@ -271,6 +289,9 @@ function robloxBarCompactHTML() {
   const untilNext = CORRECT_PER_MINUTE - (correctCount % CORRECT_PER_MINUTE);
   const correctPct = ((correctCount % CORRECT_PER_MINUTE) / CORRECT_PER_MINUTE) * 100;
 
+  const miniRobux = getMiniRobux();
+  const miniDollars = getMiniRobuxDollars();
+
   return `
     <div class="robux-bar-compact">
       <div class="rbc-top">
@@ -279,6 +300,10 @@ function robloxBarCompactHTML() {
           ${money > 0 ? `<span class="robux-money-tag">&#x1F4B0; $${money}</span>` : ''}
           ${bonus ? '<span class="robux-bonus-tag">1.2x</span>' : ''}
         </span>
+      </div>
+      <div class="rbc-mini-robux">
+        <span>&#x1F4B0; ${miniRobux} Mini Robux</span>
+        <span class="rbc-mini-dollars">($${miniDollars})</span>
       </div>
       <div class="rbc-row">
         <span class="rbc-earned">${earned}<span class="rbc-unit">/${max} min</span></span>
@@ -681,6 +706,7 @@ function renderSpellingPhase(word, theme, weeklyWords, weekNum, weekLearned) {
       const result = trackCorrectAndAward();
 
       let feedbackHTML = `<div class="lt-correct">&#x2705; Perfect! <strong>${word.word}</strong> mastered!</div>`;
+      feedbackHTML += `<div class="mini-robux-feedback">&#x1F4B0; +1 Mini Robux! (Total: ${result.miniRobux})</div>`;
       if (result.awarded > 0) {
         feedbackHTML += `<div class="lt-reward">&#x1F3AE; +1 ROBLOX MIN!</div>`;
       } else {
@@ -942,6 +968,7 @@ function startQuiz() {
             saveState(state);
           }
           const result = trackCorrectAndAward();
+          feedbackHTML += `<div class="mini-robux-feedback">&#x1F4B0; +1 Mini Robux! (${result.miniRobux})</div>`;
           if (result.awarded > 0) {
             feedbackHTML += `<div style="text-align:center;margin-top:6px;font-family:'Press Start 2P',monospace;font-size:0.5rem;color:var(--roblox-green-light);">&#x1F3AE; +1 ROBLOX MIN!</div>`;
           } else {
@@ -1248,8 +1275,9 @@ function startSchoolReview() {
 
       if (isCorrect) {
         correctCount++;
+        const miniTotal = awardMiniRobux();
         app.querySelectorAll('.spell-box.hint').forEach(h => h.classList.add('all-correct'));
-        feedbackEl.innerHTML = `<div class="lt-correct">&#x2705; Perfect!</div>`;
+        feedbackEl.innerHTML = `<div class="lt-correct">&#x2705; Perfect!</div><div class="mini-robux-feedback">&#x1F4B0; +1 Mini Robux! (${miniTotal})</div>`;
         nextBtn.textContent = currentIdx < words.length - 1 ? 'Next Word \u25B6' : 'See Results \uD83C\uDFC6';
         nextBtn.className = 'learn-test-next success';
       } else {
@@ -1509,6 +1537,10 @@ function renderStats() {
           <div class="pc-stat hero orange">
             <div class="pc-val">$${getTotalRobloxMoney()}</div>
             <div class="pc-key">&#x1F4B0; Roblox Money</div>
+          </div>
+          <div class="pc-stat hero gold">
+            <div class="pc-val">${getMiniRobux()}</div>
+            <div class="pc-key">&#x1F4B0; Mini Robux ($${getMiniRobuxDollars()})</div>
           </div>
           <div class="pc-stat hero green">
             <div class="pc-val">${totalRoblox}</div>
