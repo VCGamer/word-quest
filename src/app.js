@@ -127,6 +127,7 @@ function trackCorrectAndAward() {
     saveState(state);
   }
   const miniTotal = awardMiniRobux();
+  showCoinAnimation();
   const capReached = getTodayEarned() >= getTodayMaxMinutes();
   return { correctCount: currentCount, awarded, capReached, untilNext: CORRECT_PER_MINUTE - (currentCount % CORRECT_PER_MINUTE), miniRobux: miniTotal };
 }
@@ -153,8 +154,10 @@ function isMoneyAwardedToday() {
 
 // ===== MINI ROBUX / ROBUX $ =====
 function awardMiniRobux(amount = MINI_ROBUX_PER_CORRECT) {
-  state.miniRobux = (state.miniRobux || 0) + amount;
+  const prev = state.miniRobux || 0;
+  state.miniRobux = prev + amount;
   saveState(state);
+  checkMilestone(prev, state.miniRobux);
   return state.miniRobux;
 }
 
@@ -292,17 +295,17 @@ function robloxBarCompactHTML() {
     <div class="robux-bar-compact">
       <div class="rbc-top">
         <span class="rbc-title">&#x1F3AE; ROBLOX TIME</span>
-        <span class="rbc-tags">
-          ${bonus ? '<span class="robux-bonus-tag">1.2x</span>' : ''}
-        </span>
-      </div>
-      <div class="rbc-mini-robux">
-        <span>&#x1F4B0; ${miniRobux} Mini Robux</span>
-        <span class="rbc-mini-dollars">(Robux $${miniDollars})</span>
+        <div class="rbc-wallet" id="rbcWallet">
+          <div class="rbc-wallet-amount">&#x1F4B2;$${miniDollars}</div>
+          <div class="rbc-wallet-sub">${miniRobux} MR</div>
+        </div>
       </div>
       <div class="rbc-row">
         <span class="rbc-earned">${earned}<span class="rbc-unit">/${max} min</span></span>
-        <span class="rbc-streak">${state.streak >= 1 ? `&#x1F525; ${state.streak} day streak` : ''}</span>
+        <span class="rbc-streak">
+          ${state.streak >= 1 ? `&#x1F525; ${state.streak} day streak` : ''}
+          ${bonus ? ' <span class="robux-bonus-tag">1.2x</span>' : ''}
+        </span>
       </div>
       <div class="robux-progress-bg">
         <div class="robux-progress-fill ${isFull ? 'maxed' : ''}" style="width: ${pct}%"></div>
@@ -315,6 +318,68 @@ function robloxBarCompactHTML() {
       </div>
     </div>
   `;
+}
+
+// ===== COIN FLY ANIMATION =====
+function showCoinAnimation() {
+  const wallet = document.getElementById('rbcWallet');
+  if (!wallet) return;
+  const walletRect = wallet.getBoundingClientRect();
+  const targetX = walletRect.left + walletRect.width / 2;
+  const targetY = walletRect.top + walletRect.height / 2;
+  const startX = window.innerWidth / 2;
+  const startY = window.innerHeight * 0.45;
+
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => {
+      const coin = document.createElement('div');
+      coin.className = 'coin-fly';
+      coin.textContent = '\uD83E\uDE99';
+      coin.style.left = startX + 'px';
+      coin.style.top = startY + 'px';
+      coin.style.setProperty('--tx', (targetX - startX) + 'px');
+      coin.style.setProperty('--ty', (targetY - startY) + 'px');
+      document.body.appendChild(coin);
+      coin.addEventListener('animationend', () => {
+        coin.remove();
+        if (i === 2 && wallet) wallet.classList.add('wallet-bump');
+        if (i === 2) setTimeout(() => wallet && wallet.classList.remove('wallet-bump'), 300);
+      });
+    }, i * 120);
+  }
+}
+
+// ===== MILESTONE POPUP =====
+const MILESTONES = [10, 25, 50, 100, 250, 500, 1000];
+function checkMilestone(prevTotal, newTotal) {
+  for (const m of MILESTONES) {
+    if (prevTotal < m && newTotal >= m) {
+      setTimeout(() => showMilestonePopup(m), 800);
+      return;
+    }
+  }
+}
+
+function showMilestonePopup(amount) {
+  document.querySelectorAll('.milestone-overlay, .milestone-popup').forEach(el => el.remove());
+  const overlay = document.createElement('div');
+  overlay.className = 'milestone-overlay';
+  const popup = document.createElement('div');
+  popup.className = 'milestone-popup';
+  popup.innerHTML = `
+    <div class="milestone-icon">&#x1F389;</div>
+    <div class="milestone-title">MILESTONE!</div>
+    <div class="milestone-amount">${amount} Mini Robux</div>
+    <div class="milestone-dollars">Robux $${(amount / 100).toFixed(2)}</div>
+    <div class="milestone-sub">Keep collecting!</div>
+    <button class="milestone-dismiss" id="dismissMilestone">AWESOME!</button>
+  `;
+  document.body.appendChild(overlay);
+  document.body.appendChild(popup);
+  const dismiss = () => { overlay.remove(); popup.remove(); };
+  document.getElementById('dismissMilestone').addEventListener('click', dismiss);
+  overlay.addEventListener('click', dismiss);
+  setTimeout(dismiss, 4000);
 }
 
 // ===== BOTTOM NAV =====
@@ -1448,6 +1513,7 @@ function startSchoolReview() {
       if (isCorrect) {
         correctCount++;
         const miniTotal = awardMiniRobux();
+        showCoinAnimation();
         app.querySelectorAll('.spell-box.hint').forEach(h => h.classList.add('all-correct'));
         feedbackEl.innerHTML = `<div class="lt-correct">&#x2705; Perfect!</div><div class="mini-robux-feedback">&#x1F4B0; +1 Mini Robux! (${miniTotal})</div>`;
         nextBtn.textContent = currentIdx < words.length - 1 ? 'Next Word \u25B6' : 'See Results \uD83C\uDFC6';
