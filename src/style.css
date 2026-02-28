@@ -1084,6 +1084,81 @@ button, a, .lto-btn, .quiz-option, .lpd, .bnav-tab, .vg-header {
   color: var(--text);
 }
 
+/* Spelling Drill Button on Quiz Gate */
+.qg-drill-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 24px;
+  margin-top: 12px;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  border: 2px solid #a78bfa;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.65rem;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+  transition: all 0.2s;
+}
+
+.qg-drill-btn:hover {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+  transform: translateY(-1px);
+}
+
+.qg-drill-sub {
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+/* Spelling Drill Score */
+.drill-score {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  margin: 8px 0;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.drill-score-correct {
+  font-size: 1.2rem;
+  color: var(--roblox-green-light);
+}
+
+.drill-score-sep {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.drill-score-total {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.drill-score-label {
+  font-size: 0.45rem;
+  color: var(--text-dim);
+  margin-left: 4px;
+}
+
+/* Drill Exit Button */
+.drill-exit-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid #3a3f4a;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
 /* ===== SCHOOL REVIEW QUIZ ===== */
 .school-header {
   text-align: center;

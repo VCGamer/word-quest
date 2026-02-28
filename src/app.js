@@ -5,11 +5,11 @@ const STORAGE_KEY = 'vocab-app-state';
 const DAILY_CAP_MINUTES = 10;
 const BONUS_MULTIPLIER = 1.2;
 const BONUS_THRESHOLD = 0.9; // 90%
-const MONEY_THRESHOLD = 8;   // Score > 8 out of 10 → +10 Mini Robux ($1.00 Robux $)
+const MONEY_THRESHOLD = 8;   // Score > 8 out of 10 → +10 Mini Robux ($0.10 Robux $)
 const CORRECT_PER_MINUTE = 5; // 5 correct answers = 1 Roblox minute
 const SCHOOL_REVIEW_REWARD = 10; // 100% on school review = 10 Roblox minutes
-const MINI_ROBUX_PER_CORRECT = 1; // 1 Mini Robux per correct answer (1 = $0.10 Robux $)
-const MINI_ROBUX_QUIZ_BONUS = 10; // Quiz score > 8 → +10 Mini Robux ($1.00)
+const MINI_ROBUX_PER_CORRECT = 1; // 1 Mini Robux per correct answer (1 = $0.01 Robux $)
+const MINI_ROBUX_QUIZ_BONUS = 10; // Quiz score > 8 → +10 Mini Robux ($0.10)
 const PARENT_PIN = '0824';
 
 const SCHOOL_REVIEW_WORDS = [
@@ -163,7 +163,7 @@ function getMiniRobux() {
 }
 
 function getMiniRobuxDollars() {
-  return (getMiniRobux() / 10).toFixed(2);
+  return (getMiniRobux() / 100).toFixed(2);
 }
 
 // ===== DATE & WEEKLY THEME =====
@@ -762,8 +762,11 @@ function renderQuizGate(theme, weeklyWords, weekNum) {
         <button class="qg-quiz-btn" id="startQuizBtn">
           <span class="qg-quiz-icon">&#x2694;&#xFE0F;</span>
           <span class="qg-quiz-text">TAKE THE QUIZ!</span>
-          <span class="qg-quiz-sub">Score 9+ = &#x1F4B0; $1 &nbsp;|&nbsp; 90%+ = 1.2x Bonus</span>
+          <span class="qg-quiz-sub">Score 9+ = &#x1F4B0; +10 MR &nbsp;|&nbsp; 90%+ = 1.2x Bonus</span>
         </button>
+
+        <button class="qg-drill-btn" id="drillBtn">&#x270F;&#xFE0F; SPELLING DRILL</button>
+        <div class="qg-drill-sub">+1 Mini Robux per correct spell</div>
 
         <button class="qg-review-btn" id="reviewBtn">&#x1F504; Review Words Again</button>
       </div>
@@ -771,6 +774,9 @@ function renderQuizGate(theme, weeklyWords, weekNum) {
   `;
 
   document.getElementById('startQuizBtn').addEventListener('click', () => render('quiz'));
+  document.getElementById('drillBtn').addEventListener('click', () => {
+    renderSpellingDrill(weeklyWords, theme, weekNum);
+  });
   document.getElementById('reviewBtn').addEventListener('click', () => {
     learnIndex = 0;
     // Temporarily allow revisiting learned words
@@ -846,6 +852,177 @@ function renderLearnReview() {
   });
 
   renderBottomNav('learn');
+}
+
+// ===== SPELLING DRILL (after all weekly words mastered) =====
+function renderSpellingDrill(weeklyWords, theme, weekNum) {
+  let drillCorrect = 0;
+  let drillTotal = 0;
+  const shuffled = [...weeklyWords].sort(() => Math.random() - 0.5);
+  let drillIdx = 0;
+
+  function showDrillWord() {
+    if (drillIdx >= shuffled.length) {
+      // Reshuffle and loop
+      shuffled.sort(() => Math.random() - 0.5);
+      drillIdx = 0;
+    }
+
+    const word = shuffled[drillIdx];
+    const letters = word.word.split('');
+    drillTotal++;
+
+    app.innerHTML = `
+      <div class="app-container">
+        ${robloxBarCompactHTML()}
+
+        <div class="learn-theme-label">
+          <span class="ltl-week">&#x270F;&#xFE0F; SPELLING DRILL</span>
+          <span class="ltl-name">${theme.emoji} ${theme.name}</span>
+        </div>
+
+        <div class="drill-score">
+          <span class="drill-score-correct">${drillCorrect}</span>
+          <span class="drill-score-sep">/</span>
+          <span class="drill-score-total">${drillTotal - 1}</span>
+          <span class="drill-score-label">correct</span>
+        </div>
+
+        <div class="learn-phase-tag spell">&#x270F;&#xFE0F; SPELL</div>
+
+        <div class="learn-spell-card">
+          <div class="lsc-prompt">Spell the word that means:</div>
+          <div class="lsc-def">${word.definition}</div>
+          <div class="lsc-pos">${word.partOfSpeech}</div>
+        </div>
+
+        <div class="spell-letter-boxes" id="letterBoxes">
+          ${letters.map((ch, i) => {
+            if (i === 0) {
+              return `<div class="spell-box hint" data-idx="${i}">${ch.toUpperCase()}</div>`;
+            }
+            return `<input class="spell-box" data-idx="${i}" type="text" maxlength="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">`;
+          }).join('')}
+        </div>
+
+        <button class="spell-check-btn" id="spellCheckBtn">CHECK &#x2705;</button>
+
+        <div class="learn-test-feedback hidden" id="spellFeedback"></div>
+        <button class="learn-test-next hidden" id="spellNext"></button>
+
+        <button class="drill-exit-btn" id="drillExitBtn">&#x2B05;&#xFE0F; Back</button>
+      </div>
+    `;
+
+    const boxes = app.querySelectorAll('.spell-box:not(.hint)');
+    const checkBtn = document.getElementById('spellCheckBtn');
+    const feedbackEl = document.getElementById('spellFeedback');
+    const nextBtn = document.getElementById('spellNext');
+    let answered = false;
+
+    if (boxes.length > 0) setTimeout(() => boxes[0].focus(), 100);
+
+    // Letter box input handling (same as regular spelling)
+    boxes.forEach((box, i) => {
+      box.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (val.length >= 1) {
+          e.target.value = val.charAt(val.length - 1).toLowerCase();
+          if (i < boxes.length - 1) boxes[i + 1].focus();
+        }
+      });
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && box.value === '' && i > 0) {
+          e.preventDefault();
+          boxes[i - 1].focus();
+          boxes[i - 1].value = '';
+        } else if (e.key === 'Enter') {
+          doCheck();
+        } else if (e.key === 'ArrowLeft' && i > 0) {
+          boxes[i - 1].focus();
+        } else if (e.key === 'ArrowRight' && i < boxes.length - 1) {
+          boxes[i + 1].focus();
+        }
+      });
+      box.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasted = (e.clipboardData.getData('text') || '').toLowerCase();
+        for (let j = 0; j < pasted.length && (i + j) < boxes.length; j++) {
+          boxes[i + j].value = pasted[j];
+        }
+        const lastIdx = Math.min(i + pasted.length, boxes.length) - 1;
+        if (lastIdx >= 0) boxes[lastIdx].focus();
+      });
+    });
+
+    function doCheck() {
+      if (answered) return;
+      const allFilled = Array.from(boxes).every(box => box.value.trim() !== '');
+      if (!allFilled) {
+        boxes.forEach(b => { if (!b.value.trim()) b.classList.add('shake'); });
+        setTimeout(() => boxes.forEach(b => b.classList.remove('shake')), 400);
+        return;
+      }
+      answered = true;
+      checkBtn.disabled = true;
+
+      const userAnswer = Array.from(boxes).map(b => b.value.toLowerCase());
+      const correctLetters = letters.slice(1);
+      const isCorrect = userAnswer.every((ch, i) => ch === correctLetters[i].toLowerCase());
+
+      // Highlight each letter
+      letters.forEach((ch, i) => {
+        if (i === 0) return;
+        const box = app.querySelector(`.spell-box[data-idx="${i}"]`);
+        if (box.value.toLowerCase() === ch.toLowerCase()) {
+          box.classList.add('correct');
+        } else {
+          box.classList.add('wrong');
+        }
+      });
+
+      if (isCorrect) {
+        drillCorrect++;
+        app.querySelector('.spell-box.hint').classList.add('all-correct');
+        const result = trackCorrectAndAward();
+        let feedbackHTML = `<div class="lt-correct">&#x2705; Perfect!</div>`;
+        feedbackHTML += `<div class="mini-robux-feedback">&#x1F4B0; +1 Mini Robux! (${result.miniRobux})</div>`;
+        feedbackEl.innerHTML = feedbackHTML;
+        nextBtn.textContent = 'Next Word \u25B6';
+        nextBtn.className = 'learn-test-next success';
+      } else {
+        feedbackEl.innerHTML = `
+          <div class="lt-wrong">&#x274C; Correct spelling:</div>
+          <div class="lt-answer spell-answer">${word.word}</div>
+        `;
+        nextBtn.textContent = 'Next Word \u25B6';
+        nextBtn.className = 'learn-test-next retry';
+      }
+
+      // Update score display
+      app.querySelector('.drill-score-correct').textContent = drillCorrect;
+      app.querySelector('.drill-score-total').textContent = drillTotal;
+
+      feedbackEl.classList.remove('hidden');
+      nextBtn.classList.remove('hidden');
+
+      nextBtn.addEventListener('click', () => {
+        drillIdx++;
+        showDrillWord();
+        renderBottomNav('learn');
+      });
+    }
+
+    checkBtn.addEventListener('click', doCheck);
+
+    document.getElementById('drillExitBtn').addEventListener('click', () => {
+      render('learn');
+    });
+
+    renderBottomNav('learn');
+  }
+
+  showDrillWord();
 }
 
 // ===== QUIZ VIEW =====
@@ -1738,7 +1915,7 @@ function showAdminPanel() {
         <div class="admin-field">
           <label>Mini Robux</label>
           <input type="number" id="adminMiniRobux" value="${getMiniRobux()}" min="0">
-          <span class="admin-hint">1 = $0.10</span>
+          <span class="admin-hint">100 = $1.00</span>
         </div>
         <div class="admin-field">
           <label>Robux $</label>
