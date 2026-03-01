@@ -624,6 +624,56 @@ button, a, .lto-btn, .quiz-option, .lpd, .bnav-tab, .vg-header {
   z-index: 1;
 }
 
+/* AI-generated word image */
+.lwc-image-container {
+  margin: 12px auto;
+  max-width: 220px;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.lwc-image-placeholder {
+  width: 200px;
+  height: 140px;
+  border-radius: 12px;
+  background: rgba(0, 176, 106, 0.06);
+  border: 1.5px dashed rgba(0, 176, 106, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lwc-image-spinner {
+  width: 26px;
+  height: 26px;
+  border: 3px solid rgba(0, 212, 126, 0.15);
+  border-top-color: var(--roblox-green-light);
+  border-radius: 50%;
+  animation: imgSpin 0.8s linear infinite;
+}
+
+@keyframes imgSpin {
+  to { transform: rotate(360deg); }
+}
+
+.lwc-image {
+  max-width: 220px;
+  max-height: 220px;
+  border-radius: 12px;
+  border: 2px solid rgba(0, 176, 106, 0.3);
+  box-shadow: 0 0 12px rgba(0, 176, 106, 0.15);
+  animation: imgFadeIn 0.4s ease;
+}
+
+@keyframes imgFadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 /* Phase Tag (STUDY / TEST) */
 .learn-phase-tag {
   text-align: center;
@@ -2807,6 +2857,29 @@ button, a, .lto-btn, .quiz-option, .lpd, .bnav-tab, .vg-header {
 .admin-field input[type="number"]:focus {
   border-color: var(--roblox-purple);
   outline: none;
+}
+
+.admin-field input[type="password"] {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  background: #12141a;
+  border: 1px solid #3a3f4a;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.7rem;
+  font-family: inherit;
+}
+
+.admin-field input[type="password"]:focus {
+  border-color: var(--roblox-purple);
+  outline: none;
+}
+
+.admin-hint-text {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  margin-top: 4px;
 }
 
 .admin-hint {

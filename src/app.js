@@ -11,6 +11,7 @@ const SCHOOL_REVIEW_REWARD = 10; // 100% on school review = 10 Roblox minutes
 const MINI_ROBUX_PER_CORRECT = 1; // 1 Mini Robux per correct answer (1 = $0.01 Robux $)
 const MINI_ROBUX_QUIZ_BONUS = 10; // Quiz score > 8 → +10 Mini Robux ($0.10)
 const PARENT_PIN = '0824';
+const GEMINI_KEY_STORAGE = 'vocab-app-gemini-key';
 
 // School Review word banks — each bank has 40 words, 10 picked per session
 // After 4 sessions on a bank, rotate to the next
@@ -87,6 +88,88 @@ function saveState(s) {
 }
 
 let state = loadState();
+
+// ===== GEMINI API KEY =====
+function getGeminiKey() {
+  return localStorage.getItem(GEMINI_KEY_STORAGE) || '';
+}
+function setGeminiKey(key) {
+  localStorage.setItem(GEMINI_KEY_STORAGE, key.trim());
+}
+
+// ===== IMAGE CACHE (IndexedDB) =====
+const IMG_DB_NAME = 'vocab-images';
+const IMG_STORE_NAME = 'images';
+
+function openImageDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IMG_DB_NAME, 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(IMG_STORE_NAME)) {
+        db.createObjectStore(IMG_STORE_NAME);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function getCachedImage(word) {
+  try {
+    const db = await openImageDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(IMG_STORE_NAME, 'readonly');
+      const req = tx.objectStore(IMG_STORE_NAME).get('img-' + word);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch { return null; }
+}
+
+async function setCachedImage(word, dataUrl) {
+  try {
+    const db = await openImageDB();
+    const tx = db.transaction(IMG_STORE_NAME, 'readwrite');
+    tx.objectStore(IMG_STORE_NAME).put(dataUrl, 'img-' + word);
+  } catch { /* fail silently */ }
+}
+
+// ===== GEMINI IMAGE GENERATION =====
+const GEMINI_MODEL = 'gemini-2.5-flash-image';
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+async function generateWordImage(word, definition) {
+  const apiKey = getGeminiKey();
+  if (!apiKey) return null;
+
+  const cached = await getCachedImage(word);
+  if (cached) return cached;
+
+  const prompt = `Create a simple, colorful, kid-friendly cartoon illustration for the vocabulary word "${word}" which means "${definition}". The image should be a single clear scene that helps a 9-year-old child understand the word. No text or letters in the image. Bright colors, friendly style.`;
+
+  try {
+    const res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+      })
+    });
+    if (!res.ok) { console.warn('Gemini API error:', res.status); return null; }
+    const data = await res.json();
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const imagePart = parts.find(p => p.inlineData);
+    if (!imagePart) return null;
+    const dataUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+    await setCachedImage(word, dataUrl);
+    return dataUrl;
+  } catch (err) {
+    console.warn('Image generation failed:', err);
+    return null;
+  }
+}
 
 // ===== ROBLOX TIME SYSTEM =====
 function getTodayStr() {
@@ -511,6 +594,7 @@ function renderStudyPhase(word, theme, weeklyWords, weekNum, weekLearned) {
       <div class="learn-word-card">
         <div class="lwc-word">${word.word}</div>
         <div class="lwc-pos">${word.partOfSpeech}</div>
+        ${getGeminiKey() ? '<div class="lwc-image-container" id="wordImageContainer"><div class="lwc-image-placeholder"><div class="lwc-image-spinner"></div></div></div>' : ''}
         <div class="lwc-def">${word.definition}</div>
         <div class="lwc-examples">
           ${word.examples.map(ex => `<div class="lwc-example">&#x1F3AF; ${ex}</div>`).join('')}
@@ -535,6 +619,19 @@ function renderStudyPhase(word, theme, weeklyWords, weekNum, weekLearned) {
       render('learn');
     });
   });
+
+  // Async image loading (non-blocking)
+  const imageContainer = document.getElementById('wordImageContainer');
+  if (imageContainer) {
+    generateWordImage(word.word, word.definition).then(dataUrl => {
+      if (document.getElementById('wordImageContainer') !== imageContainer) return;
+      if (dataUrl) {
+        imageContainer.innerHTML = `<img class="lwc-image" src="${dataUrl}" alt="Illustration for ${word.word}">`;
+      } else {
+        imageContainer.remove();
+      }
+    });
+  }
 }
 
 // Phase 2: Mini-quiz — pick the correct definition from 4 choices
@@ -2075,6 +2172,15 @@ function showAdminPanel() {
         </div>
       </div>
 
+      <div class="admin-section">
+        <div class="admin-section-title">&#x1F5BC;&#xFE0F; AI Images</div>
+        <div class="admin-field">
+          <label>Gemini Key</label>
+          <input type="password" id="adminGeminiKey" value="${getGeminiKey()}" placeholder="Paste API key" autocomplete="off">
+        </div>
+        <div class="admin-hint-text">Generates illustrations for vocab words</div>
+      </div>
+
       <div class="admin-actions">
         <button class="admin-save-btn" id="adminSaveBtn">&#x2705; Save Changes</button>
         <button class="admin-cancel-btn" id="adminCancelBtn">Cancel</button>
@@ -2091,6 +2197,7 @@ function showAdminPanel() {
     todayData.schoolReviewDone = document.getElementById('adminSchoolDone').checked;
     state.miniRobux = Math.max(0, parseInt(document.getElementById('adminMiniRobux').value) || 0);
     state.streak = Math.max(0, parseInt(document.getElementById('adminStreak').value) || 0);
+    setGeminiKey(document.getElementById('adminGeminiKey').value);
     saveState(state);
     overlay.remove();
     render('stats');
