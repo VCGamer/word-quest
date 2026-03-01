@@ -12,21 +12,45 @@ const MINI_ROBUX_PER_CORRECT = 1; // 1 Mini Robux per correct answer (1 = $0.01 
 const MINI_ROBUX_QUIZ_BONUS = 10; // Quiz score > 8 → +10 Mini Robux ($0.10)
 const PARENT_PIN = '0824';
 
-const SCHOOL_REVIEW_WORDS = [
-  { correct: "doesn't", wrong: "does'nt" },
-  { correct: "didn't", wrong: "did'nt" },
-  { correct: "beginning", wrong: "bigenning" },
-  { correct: "until", wrong: "untill" },
-  { correct: "tomorrow", wrong: "tommorow" },
-  { correct: "happened", wrong: "happend" },
-  { correct: "wouldn't", wrong: "wouldnt" },
-  { correct: "shouldn't", wrong: "shouldnt" },
-  { correct: "meant", wrong: "ment" },
-  { correct: "different", wrong: "deffrent" },
-  { correct: "believe", wrong: "belive" },
-  { correct: "usually", wrong: "usuefly" },
-  { correct: "beautiful", wrong: "buetifull" },
+// School Review word banks — each bank has 40 words, 10 picked per session
+// After 4 sessions on a bank, rotate to the next
+const SCHOOL_WORD_BANKS = [
+  // Bank 0: Words from school spelling test
+  [
+    "every", "doesn't", "didn't", "with", "which",
+    "they", "finally", "your", "really", "beginning",
+    "exciting", "maybe", "because", "friend", "write",
+    "asked", "until", "tomorrow", "happened", "interesting",
+    "except", "wouldn't", "shouldn't", "meant", "different",
+    "decided", "believe", "important", "people", "thought",
+    "threw", "there", "whole", "January", "February",
+    "unusual", "usually", "beautiful", "answer", "Wednesday",
+  ],
+  // Bank 1: Similar P4-level words
+  [
+    "through", "although", "enough", "caught", "brought",
+    "bought", "fought", "taught", "daughter", "neighbour",
+    "surprise", "separate", "favourite", "library", "February",
+    "calendar", "necessary", "definitely", "immediately", "accidentally",
+    "disappear", "restaurant", "environment", "temperature", "especially",
+    "experience", "knowledge", "imagine", "remember", "describe",
+    "practise", "exercise", "complete", "sentence", "paragraph",
+    "opposite", "probably", "actually", "already", "everything",
+  ],
+  // Bank 2: More P4-level tricky words
+  [
+    "receive", "achieve", "ceiling", "believe", "deceive",
+    "foreign", "weird", "height", "weight", "straight",
+    "tonight", "through", "although", "thought", "whether",
+    "weather", "island", "listen", "science", "scissors",
+    "comfortable", "vegetable", "chocolate", "interested", "instrument",
+    "adventure", "attention", "audience", "building", "calendar",
+    "certain", "circle", "continue", "difficult", "disappoint",
+    "favourite", "grammar", "material", "occasion", "possible",
+  ],
 ];
+const SCHOOL_WORDS_PER_SESSION = 10;
+const SCHOOL_SESSIONS_PER_BANK = 4;
 
 function getDefaults() {
   return {
@@ -41,6 +65,8 @@ function getDefaults() {
     todayBonusActive: false,
     robloxMoney: 0,
     miniRobux: 0,
+    schoolBank: 0,
+    schoolSessionCount: 0,
   };
 }
 
@@ -1315,9 +1341,32 @@ function startQuiz() {
 }
 
 // ===== SCHOOL REVIEW QUIZ =====
+function getCurrentSchoolBank() {
+  const bankIdx = (state.schoolBank || 0) % SCHOOL_WORD_BANKS.length;
+  return SCHOOL_WORD_BANKS[bankIdx];
+}
+
+function getSchoolSessionWords() {
+  const bank = getCurrentSchoolBank();
+  const shuffled = [...bank].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, SCHOOL_WORDS_PER_SESSION);
+}
+
+function advanceSchoolSession() {
+  state.schoolSessionCount = (state.schoolSessionCount || 0) + 1;
+  if (state.schoolSessionCount >= SCHOOL_SESSIONS_PER_BANK) {
+    state.schoolBank = ((state.schoolBank || 0) + 1) % SCHOOL_WORD_BANKS.length;
+    state.schoolSessionCount = 0;
+  }
+  saveState(state);
+}
+
 function renderSchool() {
   const todayData = getTodayRobloxData();
   const alreadyDone = todayData.schoolReviewDone || false;
+  const bank = getCurrentSchoolBank();
+  const bankIdx = (state.schoolBank || 0) % SCHOOL_WORD_BANKS.length;
+  const sessionNum = (state.schoolSessionCount || 0) + 1;
 
   app.innerHTML = `
     <div class="app-container">
@@ -1326,16 +1375,15 @@ function renderSchool() {
       <div class="school-header">
         <div class="school-icon">&#x1F3EB;</div>
         <div class="school-title">SCHOOL REVIEW</div>
-        <div class="school-sub">Practise the ${SCHOOL_REVIEW_WORDS.length} words you got wrong!</div>
+        <div class="school-sub">Spell ${SCHOOL_WORDS_PER_SESSION} random words from ${bank.length}!</div>
+        <div class="school-session-info">Set ${bankIdx + 1} &#x2022; Session ${sessionNum}/${SCHOOL_SESSIONS_PER_BANK}</div>
       </div>
 
       <div class="school-words-preview">
-        ${SCHOOL_REVIEW_WORDS.map((w, i) => `
+        ${bank.map((w, i) => `
           <div class="swp-item">
             <span class="swp-num">${i + 1}</span>
-            <span class="swp-wrong">${w.wrong}</span>
-            <span class="swp-arrow">&#x2192;</span>
-            <span class="swp-correct">${w.correct}</span>
+            <span class="swp-correct">${w}</span>
           </div>
         `).join('')}
       </div>
@@ -1355,7 +1403,8 @@ function renderSchool() {
 }
 
 function startSchoolReview() {
-  const words = [...SCHOOL_REVIEW_WORDS].sort(() => Math.random() - 0.5);
+  const sessionWords = getSchoolSessionWords();
+  const words = sessionWords.map(w => ({ correct: w }));
   let currentIdx = 0;
   let correctCount = 0;
 
@@ -1403,7 +1452,7 @@ function startSchoolReview() {
         <div class="school-speak-card">
           <div class="ssc-prompt">Listen and spell the word:</div>
           <button class="ssc-play-btn" id="playWordBtn">&#x1F50A; PLAY WORD</button>
-          <div class="ssc-hint">You wrote: <span class="ssc-wrong">${entry.wrong}</span></div>
+          <div class="ssc-hint">${word.length} letters</div>
         </div>
 
         <div class="spell-letter-boxes" id="letterBoxes">
@@ -1547,6 +1596,9 @@ function renderSchoolResults(score, total) {
   const isPerfect = score === total;
   const todayData = getTodayRobloxData();
   const alreadyDone = todayData.schoolReviewDone || false;
+
+  // Advance to next session after completing a quiz
+  advanceSchoolSession();
 
   let minutesAwarded = 0;
   if (isPerfect && !alreadyDone) {
