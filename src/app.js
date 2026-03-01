@@ -7,7 +7,7 @@ const BONUS_MULTIPLIER = 1.2;
 const BONUS_THRESHOLD = 0.9; // 90%
 const MONEY_THRESHOLD = 8;   // Score > 8 out of 10 → +10 Mini Robux ($0.10 Robux $)
 const CORRECT_PER_MINUTE = 5; // 5 correct answers = 1 Roblox minute
-const SCHOOL_REVIEW_REWARD = 10; // 100% on school review = 10 Roblox minutes
+const SCHOOL_REVIEW_REWARD = 3; // 100% on school review = 3 Roblox minutes
 const MINI_ROBUX_PER_CORRECT = 1; // 1 Mini Robux per correct answer (1 = $0.01 Robux $)
 const MINI_ROBUX_QUIZ_BONUS = 10; // Quiz score > 8 → +10 Mini Robux ($0.10)
 const PARENT_PIN = '0824';
