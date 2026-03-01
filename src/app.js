@@ -137,39 +137,82 @@ async function setCachedImage(word, dataUrl) {
 }
 
 // ===== GEMINI IMAGE GENERATION =====
-const GEMINI_MODEL = 'gemini-2.5-flash-image';
+const GEMINI_MODEL = 'gemini-2.0-flash-exp-image-generation';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+// Rate limiting & deduplication — use window globals so Vite HMR instances share state
+if (!window.__imgState) window.__imgState = { pending: new Map(), lastCall: 0, cooldownUntil: 0 };
+const IMG_MIN_INTERVAL = 3000;   // min 3s between API calls
+const IMG_COOLDOWN = 60000;      // 60s cooldown after 429
 
 async function generateWordImage(word, definition) {
   const apiKey = getGeminiKey();
   if (!apiKey) return null;
 
+  // Check cache first (no rate limit needed)
   const cached = await getCachedImage(word);
   if (cached) return cached;
 
+  const gs = window.__imgState;
+
+  // If in cooldown period, skip
+  if (Date.now() < gs.cooldownUntil) return null;
+
+  // Dedup: if same word is already being fetched, return same promise
+  if (gs.pending.has(word)) return gs.pending.get(word);
+
+  const promise = _generateWordImageInner(word, definition, apiKey);
+  gs.pending.set(word, promise);
+  promise.finally(() => gs.pending.delete(word));
+  return promise;
+}
+
+async function _generateWordImageInner(word, definition, apiKey) {
+  const gs = window.__imgState;
+
+  // Rate limit: wait until minimum interval since last call
+  const now = Date.now();
+  const wait = Math.max(0, gs.lastCall + IMG_MIN_INTERVAL - now);
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+
+  // Double-check cooldown after wait
+  if (Date.now() < gs.cooldownUntil) return null;
+
+  gs.lastCall = Date.now();
+
   const prompt = `Create a simple, colorful, kid-friendly cartoon illustration for the vocabulary word "${word}" which means "${definition}". The image should be a single clear scene that helps a 9-year-old child understand the word. No text or letters in the image. Bright colors, friendly style.`;
 
-  try {
-    const res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
-      })
-    });
-    if (!res.ok) { console.warn('Gemini API error:', res.status); return null; }
-    const data = await res.json();
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find(p => p.inlineData);
-    if (!imagePart) return null;
-    const dataUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
-    await setCachedImage(word, dataUrl);
-    return dataUrl;
-  } catch (err) {
-    console.warn('Image generation failed:', err);
-    return null;
+  // Try up to 2 times with backoff
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+        })
+      });
+      if (res.status === 429) {
+        console.warn('Gemini quota hit, cooling down 60s');
+        gs.cooldownUntil = Date.now() + IMG_COOLDOWN;
+        return null;
+      }
+      if (!res.ok) { console.warn('Gemini API error:', res.status); return null; }
+      const data = await res.json();
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const imagePart = parts.find(p => p.inlineData);
+      if (!imagePart) return null;
+      const dataUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+      await setCachedImage(word, dataUrl);
+      return dataUrl;
+    } catch (err) {
+      if (attempt === 0) { await new Promise(r => setTimeout(r, 2000)); continue; }
+      console.warn('Image generation failed:', err);
+      return null;
+    }
   }
+  return null;
 }
 
 // ===== ROBLOX TIME SYSTEM =====
