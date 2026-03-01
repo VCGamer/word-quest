@@ -737,6 +737,181 @@ button, a, .lto-btn, .quiz-option, .lpd, .bnav-tab, .vg-header {
   margin-top: 8px;
 }
 
+/* Browse Navigation Arrows */
+.browse-wrapper {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.browse-arrow-btn {
+  width: 36px;
+  min-width: 36px;
+  background: rgba(0, 176, 106, 0.1);
+  border: 1.5px solid rgba(0, 176, 106, 0.2);
+  border-radius: 12px;
+  color: var(--roblox-green-light);
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.browse-arrow-btn:disabled {
+  opacity: 0.15;
+  cursor: default;
+}
+
+.browse-arrow-btn:not(:disabled):active {
+  background: rgba(0, 176, 106, 0.3);
+  transform: scale(0.95);
+}
+
+.browse-wrapper .learn-word-card {
+  flex: 1;
+  margin: 0;
+}
+
+/* Mastered card styling */
+.learn-word-card.mastered {
+  opacity: 0.7;
+  border-color: rgba(0, 176, 106, 0.5);
+}
+
+.lwc-mastered-badge {
+  text-align: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  color: var(--roblox-green-light);
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+
+/* Learn Quiz Button */
+.learn-quiz-btn {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  margin-top: 16px;
+  background: linear-gradient(135deg, var(--roblox-orange), #cc7000);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(255, 140, 0, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.learn-quiz-btn:active {
+  transform: scale(0.97);
+}
+
+.learn-quiz-hint {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+/* Mini Quiz Header */
+.learn-quiz-header {
+  text-align: center;
+  padding: 16px 0 8px;
+}
+
+.lqh-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.9rem;
+  color: var(--roblox-green-light);
+}
+
+.lqh-theme {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* Learn Quiz Results */
+.learn-quiz-results {
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.lqr-emoji {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.lqr-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.85rem;
+  color: var(--roblox-green-light);
+  margin-bottom: 8px;
+}
+
+.lqr-score {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 1.5rem;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.lqr-progress {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+.lqr-words {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+
+.lqr-word {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.lqr-word.correct {
+  background: rgba(0, 176, 106, 0.15);
+  color: var(--roblox-green-light);
+}
+
+.lqr-word.wrong {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.lqr-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--roblox-green), var(--roblox-green-dark));
+  color: #000;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.lqr-btn:active {
+  transform: scale(0.97);
+}
+
 /* Test Phase Card */
 .learn-test-card {
   background: linear-gradient(135deg, #3a2a1a, #2b1e10);

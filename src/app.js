@@ -541,32 +541,24 @@ function renderLearn() {
   const weekLearned = weeklyWords.filter(w => state.learnedWords.includes(w.word));
   const allLearned = weekLearned.length >= weeklyWords.length;
 
-  // If all learned, show quiz gate
   if (allLearned) {
     renderQuizGate(theme, weeklyWords, weekNum);
     return;
   }
 
-  // Find first unlearned word if learnIndex is out of bounds
   if (learnIndex >= weeklyWords.length) learnIndex = 0;
-
-  // Auto-advance to first unlearned word (if current is already learned)
-  let checked = 0;
-  while (state.learnedWords.includes(weeklyWords[learnIndex].word) && checked < weeklyWords.length) {
-    learnIndex = (learnIndex + 1) % weeklyWords.length;
-    checked++;
-  }
-  if (checked >= weeklyWords.length) {
-    renderQuizGate(theme, weeklyWords, weekNum);
-    return;
-  }
-
   const word = weeklyWords[learnIndex];
   renderStudyPhase(word, theme, weeklyWords, weekNum, weekLearned);
 }
 
-// Phase 1: Study the word — see definition, examples, synonyms
+// Browse phase: swipe through words with left/right arrows, then quiz
 function renderStudyPhase(word, theme, weeklyWords, weekNum, weekLearned) {
+  const isFirst = learnIndex === 0;
+  const isLast = learnIndex === weeklyWords.length - 1;
+  const isMastered = state.learnedWords.includes(word.word);
+  const unmastered = weeklyWords.filter(w => !state.learnedWords.includes(w.word));
+  const quizCount = Math.min(3, unmastered.length);
+
   app.innerHTML = `
     <div class="app-container">
       ${robloxBarCompactHTML()}
@@ -586,28 +578,46 @@ function renderStudyPhase(word, theme, weeklyWords, weekNum, weekLearned) {
 
       <div class="learn-counter">Word ${learnIndex + 1} of ${weeklyWords.length} &mdash; ${weekLearned.length} mastered</div>
 
-      <div class="learn-phase-tag study">&#x1F4D6; STUDY</div>
+      <div class="browse-wrapper">
+        <button class="browse-arrow-btn" id="browseLeft" ${isFirst ? 'disabled' : ''}>&#x2039;</button>
 
-      <div class="learn-word-card">
-        <div class="lwc-word">${word.word}</div>
-        <div class="lwc-pos">${word.partOfSpeech}</div>
-        ${getGeminiKey() ? '<div class="lwc-image-container" id="wordImageContainer"><div class="lwc-image-placeholder"><div class="lwc-image-spinner"></div></div></div>' : ''}
-        <div class="lwc-def">${word.definition}</div>
-        <div class="lwc-examples">
-          ${word.examples.map(ex => `<div class="lwc-example">&#x1F3AF; ${ex}</div>`).join('')}
+        <div class="learn-word-card ${isMastered ? 'mastered' : ''}">
+          ${isMastered ? '<div class="lwc-mastered-badge">&#x2713; Mastered</div>' : ''}
+          <div class="lwc-word">${word.word}</div>
+          <div class="lwc-pos">${word.partOfSpeech}</div>
+          ${getGeminiKey() ? '<div class="lwc-image-container" id="wordImageContainer"><div class="lwc-image-placeholder"><div class="lwc-image-spinner"></div></div></div>' : ''}
+          <div class="lwc-def">${word.definition}</div>
+          <div class="lwc-examples">
+            ${word.examples.map(ex => `<div class="lwc-example">&#x1F3AF; ${ex}</div>`).join('')}
+          </div>
+          <div class="lwc-synonyms">&#x1F4A1; Similar: ${word.synonyms.join(', ')}</div>
         </div>
-        <div class="lwc-synonyms">&#x1F4A1; Similar: ${word.synonyms.join(', ')}</div>
+
+        <button class="browse-arrow-btn" id="browseRight" ${isLast ? 'disabled' : ''}>&#x203A;</button>
       </div>
 
-      <button class="learn-test-btn" id="testMeBtn">&#x1F3AF; TEST ME!</button>
-      <div class="learn-test-hint">Answer correctly to master this word</div>
+      ${quizCount > 0 ? `
+        <button class="learn-quiz-btn" id="startLearnQuiz">&#x1F3AF; QUIZ ME! (${quizCount} word${quizCount > 1 ? 's' : ''})</button>
+        <div class="learn-quiz-hint">Answer correctly to master words</div>
+      ` : ''}
     </div>
   `;
 
-  document.getElementById('testMeBtn').addEventListener('click', () => {
-    renderTestPhase(word, theme, weeklyWords, weekNum, weekLearned);
-    renderBottomNav('learn');
+  // Arrow navigation
+  document.getElementById('browseLeft').addEventListener('click', () => {
+    if (learnIndex > 0) { learnIndex--; render('learn'); }
   });
+  document.getElementById('browseRight').addEventListener('click', () => {
+    if (learnIndex < weeklyWords.length - 1) { learnIndex++; render('learn'); }
+  });
+
+  // Quiz button
+  const quizBtn = document.getElementById('startLearnQuiz');
+  if (quizBtn) {
+    quizBtn.addEventListener('click', () => {
+      renderLearnQuiz(weeklyWords, theme, weekNum);
+    });
+  }
 
   // Dot navigation
   app.querySelectorAll('.lpd').forEach(dot => {
@@ -631,7 +641,153 @@ function renderStudyPhase(word, theme, weeklyWords, weekNum, weekLearned) {
   }
 }
 
-// Phase 2: Mini-quiz — pick the correct definition from 4 choices
+// Learn Mini Quiz: test 3 random unmastered words
+function renderLearnQuiz(weeklyWords, theme, weekNum) {
+  const unmastered = weeklyWords.filter(w => !state.learnedWords.includes(w.word));
+  const quizWords = [...unmastered].sort(() => Math.random() - 0.5).slice(0, 3);
+  let currentQ = 0;
+  const results = [];
+
+  function renderQuestion() {
+    if (currentQ >= quizWords.length) {
+      renderLearnQuizResults(results, weeklyWords, theme, weekNum);
+      return;
+    }
+
+    const word = quizWords[currentQ];
+    const others = vocabulary.filter(w => w.word !== word.word).sort(() => Math.random() - 0.5).slice(0, 3);
+    const options = [
+      { text: word.definition, correct: true },
+      ...others.map(w => ({ text: w.definition, correct: false }))
+    ].sort(() => Math.random() - 0.5);
+    let answered = false;
+
+    app.innerHTML = `
+      <div class="app-container">
+        <div class="learn-quiz-header">
+          <div class="lqh-title">&#x1F3AF; MINI QUIZ</div>
+          <div class="lqh-theme">${theme.emoji} ${theme.name}</div>
+        </div>
+
+        <div class="quiz-progress-bar">
+          <div class="quiz-progress-fill" style="width: ${(currentQ / quizWords.length) * 100}%"></div>
+        </div>
+
+        <div class="quiz-status-row">
+          <span class="quiz-counter">Q${currentQ + 1} / ${quizWords.length}</span>
+        </div>
+
+        <div class="quiz-question-card">
+          <div class="quiz-prompt">What does this word mean?</div>
+          <div class="quiz-word">${word.word}</div>
+          <div class="quiz-pos">${word.partOfSpeech}</div>
+        </div>
+
+        <div class="quiz-options">
+          ${options.map((opt, i) => `
+            <button class="quiz-option" data-index="${i}">
+              <span class="option-letter">${['A','B','C','D'][i]}</span>
+              <span class="option-text">${opt.text}</span>
+            </button>
+          `).join('')}
+        </div>
+
+        <div class="quiz-feedback hidden" id="lqFeedback"></div>
+        <button class="quiz-next-btn hidden" id="lqNext">Next &#x25B6;</button>
+      </div>
+    `;
+
+    renderBottomNav('learn');
+
+    app.querySelectorAll('.quiz-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        const idx = parseInt(btn.dataset.index);
+        const isCorrect = options[idx].correct;
+
+        if (isCorrect) {
+          btn.classList.add('correct');
+          if (!state.learnedWords.includes(word.word)) {
+            state.learnedWords.push(word.word);
+            saveState(state);
+          }
+          const result = trackCorrectAndAward();
+          let feedbackHTML = `<div class="feedback-correct">&#x2705; Correct! <strong>${word.word}</strong> mastered!</div>`;
+          feedbackHTML += `<div class="mini-robux-feedback">&#x1F4B0; +1 Mini Robux! (${result.miniRobux})</div>`;
+          if (result.awarded > 0) {
+            feedbackHTML += `<div style="text-align:center;margin-top:6px;font-family:'Press Start 2P',monospace;font-size:0.5rem;color:var(--roblox-green-light);">&#x1F3AE; +1 ROBLOX MIN!</div>`;
+          }
+          document.getElementById('lqFeedback').innerHTML = feedbackHTML;
+          results.push({ word: word.word, correct: true });
+          if (result.awarded > 0) showRewardPopup(result.awarded, result.capReached);
+        } else {
+          btn.classList.add('wrong');
+          const correctIdx = options.findIndex(o => o.correct);
+          app.querySelectorAll('.quiz-option')[correctIdx].classList.add('correct');
+          document.getElementById('lqFeedback').innerHTML = `
+            <div class="feedback-wrong">&#x274C; Not quite! The answer is:<br><strong>${options[correctIdx].text}</strong></div>
+          `;
+          results.push({ word: word.word, correct: false });
+        }
+
+        document.getElementById('lqFeedback').classList.remove('hidden');
+        document.getElementById('lqNext').classList.remove('hidden');
+      });
+    });
+
+    document.getElementById('lqNext').addEventListener('click', () => {
+      currentQ++;
+      renderQuestion();
+    });
+  }
+
+  renderQuestion();
+}
+
+function renderLearnQuizResults(results, weeklyWords, theme, weekNum) {
+  const score = results.filter(r => r.correct).length;
+  const total = results.length;
+  const weekLearned = weeklyWords.filter(w => state.learnedWords.includes(w.word));
+  const allMastered = weekLearned.length >= weeklyWords.length;
+
+  let emoji, message;
+  if (score === total) { emoji = '&#x1F3C6;'; message = 'PERFECT!'; }
+  else if (score > 0) { emoji = '&#x2B50;'; message = 'Good effort!'; }
+  else { emoji = '&#x1F4AA;'; message = 'Keep studying!'; }
+
+  app.innerHTML = `
+    <div class="app-container">
+      <div class="learn-quiz-results">
+        <div class="lqr-emoji">${emoji}</div>
+        <div class="lqr-title">${message}</div>
+        <div class="lqr-score">${score} / ${total}</div>
+        <div class="lqr-progress">${weekLearned.length} / ${weeklyWords.length} words mastered</div>
+
+        <div class="lqr-words">
+          ${results.map(r => `
+            <div class="lqr-word ${r.correct ? 'correct' : 'wrong'}">
+              <span>${r.correct ? '&#x2705;' : '&#x274C;'}</span>
+              <span>${r.word}</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <button class="lqr-btn" id="lqrContinue">
+          ${allMastered ? '&#x1F3C6; ALL MASTERED!' : '&#x1F4D6; Continue Studying'}
+        </button>
+      </div>
+    </div>
+  `;
+
+  renderBottomNav('learn');
+
+  document.getElementById('lqrContinue').addEventListener('click', () => {
+    render('learn');
+  });
+}
+
+// Phase 2: Mini-quiz — pick the correct definition from 4 choices (legacy, used by Quiz Gate review)
 function renderTestPhase(word, theme, weeklyWords, weekNum, weekLearned) {
   // Build 4 options: 1 correct + 3 random wrong definitions
   const others = vocabulary
