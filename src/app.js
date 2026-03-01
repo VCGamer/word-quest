@@ -68,6 +68,7 @@ function getDefaults() {
     miniRobux: 0,
     schoolBank: 0,
     schoolSessionCount: 0,
+    schoolRewardBank: -1,
   };
 }
 
@@ -184,10 +185,6 @@ function getTodayRobloxData() {
   // Migration: add correctCount if missing
   if (state.robloxTime[today].correctCount === undefined) {
     state.robloxTime[today].correctCount = 0;
-  }
-  // Migration: add schoolReviewDone if missing
-  if (state.robloxTime[today].schoolReviewDone === undefined) {
-    state.robloxTime[today].schoolReviewDone = false;
   }
   return state.robloxTime[today];
 }
@@ -515,7 +512,7 @@ function renderBottomNav(activeView) {
     <button class="bnav-tab ${activeView === 'school' ? 'active' : ''}" data-view="school">
       <span class="bnav-icon">&#x1F3EB;</span>
       <span class="bnav-label">SCHOOL</span>
-      ${!getTodayRobloxData().schoolReviewDone ? '<span class="bnav-badge pulse school-badge">NEW</span>' : ''}
+      ${isSchoolRewardAvailable() ? '<span class="bnav-badge pulse school-badge">NEW</span>' : ''}
     </button>
     <button class="bnav-tab ${activeView === 'vault' ? 'active' : ''}" data-view="vault">
       <span class="bnav-icon">&#x1F512;</span>
@@ -1449,6 +1446,16 @@ function getSchoolSessionWords() {
   return shuffled.slice(0, SCHOOL_WORDS_PER_SESSION);
 }
 
+function isSchoolRewardAvailable() {
+  const currentBank = (state.schoolBank || 0) % SCHOOL_WORD_BANKS.length;
+  return (state.schoolRewardBank ?? -1) !== currentBank;
+}
+
+function claimSchoolReward() {
+  state.schoolRewardBank = (state.schoolBank || 0) % SCHOOL_WORD_BANKS.length;
+  saveState(state);
+}
+
 function advanceSchoolSession() {
   state.schoolSessionCount = (state.schoolSessionCount || 0) + 1;
   if (state.schoolSessionCount >= SCHOOL_SESSIONS_PER_BANK) {
@@ -1459,8 +1466,7 @@ function advanceSchoolSession() {
 }
 
 function renderSchool() {
-  const todayData = getTodayRobloxData();
-  const alreadyDone = todayData.schoolReviewDone || false;
+  const rewardAvailable = isSchoolRewardAvailable();
   const bank = getCurrentSchoolBank();
   const bankIdx = (state.schoolBank || 0) % SCHOOL_WORD_BANKS.length;
   const sessionNum = (state.schoolSessionCount || 0) + 1;
@@ -1487,11 +1493,11 @@ function renderSchool() {
 
       <div class="school-reward-info">
         <div class="sri-text">&#x1F3AE; 100% correct = <strong>+${SCHOOL_REVIEW_REWARD} ROBLOX MIN!</strong></div>
-        ${alreadyDone ? '<div class="sri-done">&#x2705; Completed today! You can still practise.</div>' : ''}
+        ${!rewardAvailable ? '<div class="sri-done">&#x2705; Reward earned for this set! New set = new reward.</div>' : ''}
       </div>
 
       <button class="school-start-btn" id="startSchoolBtn">
-        ${alreadyDone ? '&#x1F504; PRACTICE AGAIN' : '&#x1F4DD; START QUIZ'}
+        ${!rewardAvailable ? '&#x1F504; PRACTICE AGAIN' : '&#x1F4DD; START QUIZ'}
       </button>
     </div>
   `;
@@ -1691,15 +1697,15 @@ function startSchoolReview() {
 function renderSchoolResults(score, total) {
   const pct = Math.round((score / total) * 100);
   const isPerfect = score === total;
-  const todayData = getTodayRobloxData();
-  const alreadyDone = todayData.schoolReviewDone || false;
+  const rewardAvailable = isSchoolRewardAvailable();
 
   // Advance to next session after completing a quiz
   advanceSchoolSession();
 
   let minutesAwarded = 0;
-  if (isPerfect && !alreadyDone) {
-    todayData.schoolReviewDone = true;
+  if (isPerfect && rewardAvailable) {
+    claimSchoolReward();
+    const todayData = getTodayRobloxData();
     const max = getTodayMaxMinutes();
     const canAward = Math.min(SCHOOL_REVIEW_REWARD, max - todayData.earned);
     if (canAward > 0) {
@@ -1729,8 +1735,8 @@ function renderSchoolResults(score, total) {
           </div>
         ` : ''}
 
-        ${isPerfect && alreadyDone && minutesAwarded === 0 ? `
-          <div class="sr-already">&#x2705; Great practice! Already earned today's reward.</div>
+        ${isPerfect && !rewardAvailable && minutesAwarded === 0 ? `
+          <div class="sr-already">&#x2705; Great practice! Reward already earned for this set.</div>
         ` : ''}
 
         ${!isPerfect ? `
@@ -2166,8 +2172,8 @@ function showAdminPanel() {
         </div>
         <div class="admin-toggle">
           <label>
-            <input type="checkbox" id="adminSchoolDone" ${todayData.schoolReviewDone ? 'checked' : ''}>
-            School Review Done Today
+            <input type="checkbox" id="adminSchoolReward" ${!isSchoolRewardAvailable() ? 'checked' : ''}>
+            School Reward Claimed (Set ${((state.schoolBank || 0) % SCHOOL_WORD_BANKS.length) + 1})
           </label>
         </div>
       </div>
@@ -2194,7 +2200,9 @@ function showAdminPanel() {
     todayData.earned = Math.max(0, parseInt(document.getElementById('adminTodayEarned').value) || 0);
     todayData.bonus = document.getElementById('adminBonusActive').checked;
     todayData.moneyAwarded = document.getElementById('adminMoneyAwarded').checked;
-    todayData.schoolReviewDone = document.getElementById('adminSchoolDone').checked;
+    const schoolRewardChecked = document.getElementById('adminSchoolReward').checked;
+    const currentBank = (state.schoolBank || 0) % SCHOOL_WORD_BANKS.length;
+    state.schoolRewardBank = schoolRewardChecked ? currentBank : -1;
     state.miniRobux = Math.max(0, parseInt(document.getElementById('adminMiniRobux').value) || 0);
     state.streak = Math.max(0, parseInt(document.getElementById('adminStreak').value) || 0);
     setGeminiKey(document.getElementById('adminGeminiKey').value);
