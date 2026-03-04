@@ -46,6 +46,7 @@ function getDefaults() {
     schoolBank: 0,
     schoolSessionCount: 0,
     schoolRewardBank: -1,
+    weekOffset: 0,
   };
 }
 
@@ -304,7 +305,7 @@ function getWeekNumber() {
 }
 
 function getCurrentThemeIndex() {
-  return getWeekNumber() % themeOrder.length;
+  return (getWeekNumber() + (state.weekOffset || 0)) % themeOrder.length;
 }
 
 function getCurrentTheme() {
@@ -314,6 +315,13 @@ function getCurrentTheme() {
 function getWeeklyWords() {
   const theme = getCurrentTheme();
   return vocabulary.filter(w => w.theme === theme.name);
+}
+
+function advanceToNextSet() {
+  state.weekOffset = (state.weekOffset || 0) + 1;
+  saveState(state);
+  learnIndex = 0;
+  render('learn');
 }
 
 function updateStreak() {
@@ -1130,6 +1138,9 @@ function renderQuizGate(theme, weeklyWords, weekNum) {
         <div class="qg-drill-sub">+1 Mini Robux per correct spell</div>
 
         <button class="qg-review-btn" id="reviewBtn">&#x1F504; Review Words Again</button>
+
+        <button class="qg-next-btn" id="nextSetBtn">&#x27A1;&#xFE0F; NEXT SET OF WORDS</button>
+        <div class="qg-next-sub">Move on to a new theme!</div>
       </div>
     </div>
   `;
@@ -1140,9 +1151,9 @@ function renderQuizGate(theme, weeklyWords, weekNum) {
   });
   document.getElementById('reviewBtn').addEventListener('click', () => {
     learnIndex = 0;
-    // Temporarily allow revisiting learned words
     renderLearnReview();
   });
+  document.getElementById('nextSetBtn').addEventListener('click', advanceToNextSet);
 }
 
 function renderLearnReview() {
@@ -1596,6 +1607,8 @@ function startQuiz() {
             <button class="results-btn vault-btn" id="vaultBtn">&#x1F512; Vault</button>
             <button class="results-btn stats-btn" id="statsBtn">&#x1F4CA; Stats</button>
           </div>
+
+          <button class="results-next-set-btn" id="nextSetBtn">&#x27A1;&#xFE0F; NEXT SET OF WORDS</button>
         </div>
       </div>
     `;
@@ -1605,6 +1618,7 @@ function startQuiz() {
     if (moneyAwarded > 0) showMoneyPopup();
 
     document.getElementById('retryBtn').addEventListener('click', () => startQuiz());
+    document.getElementById('nextSetBtn').addEventListener('click', advanceToNextSet);
     document.getElementById('vaultBtn').addEventListener('click', () => render('vault'));
     document.getElementById('statsBtn').addEventListener('click', () => render('stats'));
   }

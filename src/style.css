@@ -1433,6 +1433,52 @@ button, a, .lto-btn, .quiz-option, .lpd, .bnav-tab, .vg-header {
   margin-bottom: 8px;
 }
 
+.qg-next-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 24px;
+  margin-top: 16px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border: 2px solid #60a5fa;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.65rem;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s;
+}
+.qg-next-btn:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+}
+.qg-next-sub {
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.results-next-set-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 24px;
+  margin-top: 16px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border: 2px solid #60a5fa;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s;
+}
+.results-next-set-btn:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+}
+
 /* Spelling Drill Score */
 .drill-score {
   display: flex;
