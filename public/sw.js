@@ -1,4 +1,4 @@
-const CACHE_NAME = 'word-quest-v12';
+const CACHE_NAME = 'word-quest-v13';
 
 // Install: cache the app shell
 self.addEventListener('install', (event) => {

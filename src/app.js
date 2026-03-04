@@ -16,7 +16,6 @@ const GEMINI_KEY_STORAGE = 'vocab-app-gemini-key';
 // School Review word banks — each bank has 40 words, 10 picked per session
 // After 4 sessions on a bank, rotate to the next
 const SCHOOL_WORD_BANKS = [
-  // Bank 0: Words from school spelling test
   [
     "every", "doesn't", "didn't", "with", "which",
     "they", "finally", "your", "really", "beginning",
@@ -26,28 +25,6 @@ const SCHOOL_WORD_BANKS = [
     "decided", "believe", "important", "people", "thought",
     "threw", "there", "whole", "January", "February",
     "unusual", "usually", "beautiful", "answer", "Wednesday",
-  ],
-  // Bank 1: Similar P4-level words
-  [
-    "through", "although", "enough", "caught", "brought",
-    "bought", "fought", "taught", "daughter", "neighbour",
-    "surprise", "separate", "favourite", "library", "February",
-    "calendar", "necessary", "definitely", "immediately", "accidentally",
-    "disappear", "restaurant", "environment", "temperature", "especially",
-    "experience", "knowledge", "imagine", "remember", "describe",
-    "practise", "exercise", "complete", "sentence", "paragraph",
-    "opposite", "probably", "actually", "already", "everything",
-  ],
-  // Bank 2: More P4-level tricky words
-  [
-    "receive", "achieve", "ceiling", "believe", "deceive",
-    "foreign", "weird", "height", "weight", "straight",
-    "tonight", "through", "although", "thought", "whether",
-    "weather", "island", "listen", "science", "scissors",
-    "comfortable", "vegetable", "chocolate", "interested", "instrument",
-    "adventure", "attention", "audience", "building", "calendar",
-    "certain", "circle", "continue", "difficult", "disappoint",
-    "favourite", "grammar", "material", "occasion", "possible",
   ],
 ];
 const SCHOOL_WORDS_PER_SESSION = 10;
